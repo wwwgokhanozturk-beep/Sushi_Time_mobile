@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiConstants } from '../core/api';
 import { Colors, Radius, Spacing, Typography } from '../core/theme';
 import { PrimaryButton } from '../components/SharedWidgets';
+import ContactCard from '../components/ContactCard';
 import { useProfileStore } from '../store/profileStore';
 import { chatService } from '../services/chatService';
 
@@ -76,14 +77,27 @@ export default function ChatScreen({ navigation }) {
   useEffect(() => {
     if (!token) return undefined;
 
+    console.log('[SushiTime] Socket connecting to:', ApiConstants.socketUrl);
     const socket = io(ApiConstants.socketUrl, {
-      transports: ['websocket', 'polling'],
+      // polling first: guaranteed to connect over the same HTTPS that REST uses,
+      // then auto-upgrades to websocket when the transport is available.
+      transports: ['polling', 'websocket'],
       auth: { token },
     });
     socketRef.current = socket;
 
-    socket.on('connect', () => setConnected(true));
-    socket.on('disconnect', () => setConnected(false));
+    socket.on('connect', () => {
+      console.log('[SushiTime] Socket connected:', socket.id);
+      setConnected(true);
+    });
+    socket.on('disconnect', (reason) => {
+      console.log('[SushiTime] Socket disconnected:', reason);
+      setConnected(false);
+    });
+    socket.on('connect_error', (err) => {
+      console.log('[SushiTime] Socket connect_error:', err?.message, err);
+      setConnected(false);
+    });
     socket.on('chat:message', ({ thread: nextThread, message }) => {
       setThread(nextThread);
       setMessages((current) => {
@@ -170,7 +184,7 @@ export default function ChatScreen({ navigation }) {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      keyboardVerticalOffset={0}
     >
       <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
         <View>
@@ -182,6 +196,8 @@ export default function ChatScreen({ navigation }) {
         <View style={[styles.statusDot, connected && styles.statusDotOnline]} />
       </View>
 
+      <ContactCard variant="compact" />
+
       {loading ? (
         <View style={styles.loading}>
           <ActivityIndicator color={Colors.primary} />
@@ -190,6 +206,7 @@ export default function ChatScreen({ navigation }) {
         <FlatList
           ref={listRef}
           data={messages}
+          style={styles.list}
           keyExtractor={(item) => item._id}
           renderItem={renderMessage}
           contentContainerStyle={[
@@ -256,6 +273,7 @@ const styles = StyleSheet.create({
   },
   statusDotOnline: { backgroundColor: Colors.success },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  list: { flex: 1 },
   listContent: {
     padding: Spacing.md,
     paddingBottom: Spacing.xl,

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,27 +8,50 @@ import {
   ActivityIndicator,
   RefreshControl,
   StyleSheet,
-  Dimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, Radius, Shadows } from '../core/theme';
 import { useMenuStore } from '../store/menuStore';
 import { useCartStore, selectTotalItems } from '../store/cartStore';
-import { SectionHeader, ErrorState } from '../components/SharedWidgets';
+import { ErrorState } from '../components/SharedWidgets';
 import SushiCard from '../components/SushiCard';
 import PromoCarousel from '../components/PromoCarousel';
+import ContactCard from '../components/ContactCard';
 
-const { width } = Dimensions.get('window');
+// Sushi-first ordering: Sets → Rolls → Nigiri/Sashimi → snacks → … → drinks last.
+const categoryPriority = (cat) => {
+  const c = (cat || '').toLowerCase();
+  if (c === 'sets') return 0;
+  if (['rolls', 'maki', 'uramaki', 'hosomaki'].includes(c)) return 1;
+  if (['nigiri', 'sashimi', 'gunkan', 'onigiri'].includes(c)) return 2;
+  if (c === 'tempura') return 3;
+  if (['appetizers', 'salads'].includes(c)) return 4;
+  if (c === 'soups') return 5;
+  if (['wok', 'noodles'].includes(c)) return 6;
+  if (['pizza', 'fast_food'].includes(c)) return 7;
+  if (c === 'desserts') return 8;
+  if (c === 'drinks') return 9;
+  return 10;
+};
+
+const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 export default function HomeScreen({ navigation }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { items, categories, selectedCategory, loading, error, loadMenu, filterByCategory } =
-    useMenuStore();
+  const { items, loading, error, loadMenu } = useMenuStore();
   const addToCart = useCartStore((s) => s.addToCart);
   const totalItems = useCartStore(selectTotalItems);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeCat, setActiveCat] = useState(null);
+
+  const scrollRef = useRef(null);
+  const chipListRef = useRef(null);
+  const sectionYRef = useRef({});
+  const barHeightRef = useRef(56);
+  const isClickScrollingRef = useRef(false);
+  const clickTimeoutRef = useRef(null);
 
   useEffect(() => {
     loadMenu();
@@ -40,7 +63,69 @@ export default function HomeScreen({ navigation }) {
     setRefreshing(false);
   }, []);
 
-  const featured = items.slice(0, 6);
+  // Group items by category, ordered sushi-first. Works for both "All"
+  // (every category shown) and a single selected category (one group).
+  const grouped = useMemo(() => {
+    const map = new Map();
+    for (const it of items) {
+      const key = it.category || 'other';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(it);
+    }
+    return [...map.entries()].sort(([a], [b]) => categoryPriority(a) - categoryPriority(b));
+  }, [items]);
+
+  const catTitle = (cat) =>
+    t(`cat_${cat.toLowerCase()}`, { defaultValue: capitalize(cat) });
+
+  // Chips track the real sections on screen (sushi-first), so scroll-spy can
+  // map a scroll position to a chip. No "All" — tapping scrolls to a section.
+  const sectionCats = useMemo(() => grouped.map(([cat]) => cat), [grouped]);
+
+  // Default the active chip to the first section, recover if it disappears.
+  useEffect(() => {
+    if (!sectionCats.length) return;
+    if (!activeCat || !sectionCats.includes(activeCat)) setActiveCat(sectionCats[0]);
+  }, [sectionCats, activeCat]);
+
+  // Scroll-spy: mark the topmost section that has crossed under the chip bar.
+  const onScroll = (e) => {
+    if (isClickScrollingRef.current) return;
+    const y = e.nativeEvent.contentOffset.y;
+    const threshold = y + barHeightRef.current + 8;
+    let current = sectionCats[0];
+    for (const cat of sectionCats) {
+      const sy = sectionYRef.current[cat];
+      if (sy == null) continue;
+      if (sy - threshold <= 0) current = cat;
+      else break;
+    }
+    if (current && current !== activeCat) setActiveCat(current);
+  };
+
+  // Keep the active chip centered in the horizontal rail.
+  useEffect(() => {
+    if (!activeCat) return;
+    const idx = sectionCats.indexOf(activeCat);
+    if (idx >= 0) {
+      chipListRef.current?.scrollToIndex({ index: idx, viewPosition: 0.5, animated: true });
+    }
+  }, [activeCat, sectionCats]);
+
+  const scrollToCategory = (cat) => {
+    const sy = sectionYRef.current[cat];
+    if (sy == null) return;
+    setActiveCat(cat);
+    isClickScrollingRef.current = true;
+    scrollRef.current?.scrollTo({
+      y: Math.max(sy - barHeightRef.current - 8, 0),
+      animated: true,
+    });
+    clearTimeout(clickTimeoutRef.current);
+    clickTimeoutRef.current = setTimeout(() => {
+      isClickScrollingRef.current = false;
+    }, 700);
+  };
 
   return (
     <View style={styles.container}>
@@ -58,14 +143,21 @@ export default function HomeScreen({ navigation }) {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[3]}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
         }
       >
         {/* ─── Promo Carousel ─── */}
         <PromoCarousel />
+
+        {/* ─── Contact (WhatsApp / phone) ─── */}
+        <ContactCard variant="card" style={{ marginHorizontal: Spacing.md, marginTop: Spacing.sm }} />
 
         {/* ─── Delivery info strip ─── */}
         <View style={styles.infoStrip}>
@@ -93,48 +185,45 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.searchText} numberOfLines={1}>{t('search_hint')}</Text>
         </TouchableOpacity>
 
-        {/* ─── Categories ─── */}
-        {categories.length > 1 && (
+        {/* ─── Categories (pinned to top; tracks scroll position) ─── */}
+        <View
+          style={sectionCats.length > 1 ? styles.stickyCatBar : null}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h > 0) barHeightRef.current = h;
+          }}
+        >
+          {sectionCats.length > 1 && (
           <FlatList
+            ref={chipListRef}
             horizontal
-            data={categories}
+            data={sectionCats}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.catList}
             keyExtractor={(item) => item}
+            onScrollToIndexFailed={() => {}}
             renderItem={({ item: cat }) => {
-              const isSelected =
-                (selectedCategory === null && cat === 'All') || selectedCategory === cat;
-              const displayName =
-                cat === 'All'
-                  ? t('all')
-                  : t(`cat_${cat.toLowerCase()}`, {
-                      defaultValue: cat.charAt(0).toUpperCase() + cat.slice(1),
-                    });
+              const isSelected = activeCat === cat;
               return (
                 <TouchableOpacity
                   style={[styles.catChip, isSelected && styles.catChipSelected]}
-                  onPress={() => filterByCategory(cat)}
+                  onPress={() => scrollToCategory(cat)}
                   activeOpacity={0.7}
                 >
                   <Text
                     style={[styles.catChipText, isSelected && styles.catChipTextSelected]}
                     numberOfLines={1}
                   >
-                    {displayName}
+                    {catTitle(cat)}
                   </Text>
                 </TouchableOpacity>
               );
             }}
           />
-        )}
+          )}
+        </View>
 
-        {/* ─── Popular Picks ─── */}
-        <SectionHeader
-          title={t('popular_picks')}
-          actionLabel={t('see_all')}
-          onAction={() => navigation.navigate('Menu')}
-        />
-
+        {/* ─── Full menu, grouped by category (sushi first) ─── */}
         {error ? (
           <ErrorState message={error} onRetry={loadMenu} />
         ) : loading && items.length === 0 ? (
@@ -142,17 +231,26 @@ export default function HomeScreen({ navigation }) {
             <ActivityIndicator size="large" color={Colors.primary} />
           </View>
         ) : (
-          <View style={styles.listSection}>
-            {featured.map((item) => (
-              <SushiCard
-                key={item._id}
-                item={item}
-                mode="list"
-                onTap={() => navigation.navigate('ItemDetail', { itemId: item._id })}
-                onAdd={() => addToCart(item)}
-              />
-            ))}
-          </View>
+          grouped.map(([cat, list]) => (
+            <View
+              key={cat}
+              style={styles.listSection}
+              onLayout={(e) => {
+                sectionYRef.current[cat] = e.nativeEvent.layout.y;
+              }}
+            >
+              <Text style={styles.sectionTitle}>{catTitle(cat)}</Text>
+              {list.map((item) => (
+                <SushiCard
+                  key={item._id}
+                  item={item}
+                  mode="list"
+                  onTap={() => navigation.navigate('ItemDetail', { itemId: item._id })}
+                  onAdd={() => addToCart(item)}
+                />
+              ))}
+            </View>
+          ))
         )}
 
         <View style={{ height: Spacing.xl }} />
@@ -275,6 +373,13 @@ const styles = StyleSheet.create({
   },
 
   // ── Categories ──
+  // Frosted bar so menu rows don't show through when it pins to the top.
+  stickyCatBar: {
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.divider,
+    ...Shadows.sm,
+  },
   catList: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
@@ -308,6 +413,14 @@ const styles = StyleSheet.create({
   listSection: {
     paddingHorizontal: Spacing.md,
     marginTop: Spacing.sm,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: Colors.textPrimary,
+    letterSpacing: -0.4,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.xs,
   },
 
   // ── Sticky cart ──

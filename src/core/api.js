@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
 // PRODUCTION URL: замените на реальный адрес вашего сервера перед сборкой!
 // Пример: 'https://api.sushitime.com/api'
 // ─────────────────────────────────────────────────────────────────────────────
-const PRODUCTION_API_URL = 'https://YOUR_SERVER_DOMAIN/api';
+const PRODUCTION_API_URL = 'https://sushitime-backend-production.up.railway.app/api';
 
 const getHostIp = () => {
   const hostUri =
@@ -29,13 +29,13 @@ const getBaseUrl = () => {
   const ip = getHostIp();
 
   // Физическое устройство через Expo Go — IP девсервера
-  if (ip) return `http://${ip}:5000/api`;
+  if (ip) return `https://sushitime-backend-production.up.railway.app/api`;
 
   // Android Emulator
-  if (Platform.OS === 'android') return 'http://10.0.2.2:5000/api';
+  if (Platform.OS === 'android') return 'https://sushitime-backend-production.up.railway.app/api';
 
   // iOS Simulator
-  return 'http://localhost:5000/api';
+  return 'https://sushitime-backend-production.up.railway.app/api';
 };
 
 const BASE_URL = getBaseUrl();
@@ -57,6 +57,7 @@ export const ApiConstants = {
   orderById: (id) => `/orders/${id}`,
   orderStatus: (id) => `/orders/${id}/status`,
   promotions: '/promotions',
+  settings: '/settings/contact',
   notificationsRegisterToken: '/notifications/register-token',
   chatMy: '/chat/my',
   chatMyMessages: '/chat/my/messages',
