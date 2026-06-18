@@ -15,6 +15,7 @@ import { useMenuStore } from '../store/menuStore';
 import { useCartStore } from '../store/cartStore';
 import { PrimaryButton } from '../components/SharedWidgets';
 import { formatPrice } from '../utils/formatPrice';
+import { imageFrameTransform } from '../utils/imageFrame';
 
 const { width } = Dimensions.get('window');
 
@@ -60,7 +61,10 @@ export default function ItemDetailScreen({ route, navigation }) {
         <View style={[styles.imageSection, { paddingTop: insets.top + Spacing.sm }]}>
           <View style={styles.imageContainer}>
             {item.imageUrl ? (
-              <Image source={{ uri: item.imageUrl }} style={styles.image} />
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={[styles.image, { transform: imageFrameTransform(item, width - Spacing.md * 2, width - Spacing.md * 2) }]}
+              />
             ) : (
               <View style={styles.placeholder}>
                 <Text style={{ fontSize: 80 }}>🍣</Text>

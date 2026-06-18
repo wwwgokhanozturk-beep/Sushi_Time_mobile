@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Colors, Spacing, Radius, Shadows } from '../core/theme';
 import { formatPrice } from '../utils/formatPrice';
+import { imageFrameTransform } from '../utils/imageFrame';
 import { useTranslation } from 'react-i18next';
 
 // ─── Gradient vignette: blends image edges into card bg ──────────────────────
@@ -122,18 +123,25 @@ export default function SushiCard({ item, onTap, onAdd, mode = 'grid' }) {
 
         {/* RIGHT — фото + кнопка */}
         <View style={styles.listImgWrap}>
-          {item.imageUrl ? (
-            <Image source={{ uri: item.imageUrl }} style={styles.listImage} resizeMode="cover" />
-          ) : (
-            <View style={[styles.listImage, styles.listPlaceholder]}>
-              <Text style={{ fontSize: 40 }}>🍣</Text>
-            </View>
-          )}
-          {!item.isAvailable && (
-            <View style={styles.soldOutOverlay}>
-              <Text style={styles.soldOutText}>Sold{'\n'}Out</Text>
-            </View>
-          )}
+          {/* Клиппинг-контейнер: зум/смещение не вылезают за рамку */}
+          <View style={styles.listImgClip}>
+            {item.imageUrl ? (
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={[styles.listImage, { transform: imageFrameTransform(item, 116, 116) }]}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.listImage, styles.listPlaceholder]}>
+                <Text style={{ fontSize: 40 }}>🍣</Text>
+              </View>
+            )}
+            {!item.isAvailable && (
+              <View style={styles.soldOutOverlay}>
+                <Text style={styles.soldOutText}>Sold{'\n'}Out</Text>
+              </View>
+            )}
+          </View>
           {/* + кнопка поверх фото (снизу-справа) */}
           <TouchableOpacity
             style={[styles.listAddBtn, !item.isAvailable && styles.addBtnDisabled]}
@@ -356,7 +364,8 @@ const styles = StyleSheet.create({
   listCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    // Translucent so the app background design shows through the menu rows.
+    backgroundColor: 'rgba(255,255,255,0.32)',
     paddingHorizontal: Spacing.md,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -404,6 +413,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'visible', // чтобы кнопка + выходила за пределы
     flexShrink: 0,
+  },
+  // Клипует фото внутри рамки (зум/смещение из админки не вылезают)
+  listImgClip: {
+    width: 116,
+    height: 116,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   listImage: {
     width: 116,
