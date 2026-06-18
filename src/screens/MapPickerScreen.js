@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,7 +6,7 @@ import * as Location from 'expo-location';
 import { Colors, Typography, Spacing, Radius, Shadows } from '../core/theme';
 import { PrimaryButton } from '../components/SharedWidgets';
 import MapboxMap from '../components/MapboxMap';
-import { RESTAURANT_LAT, RESTAURANT_LNG } from '../core/constants';
+import { RESTAURANT_LAT, RESTAURANT_LNG, MAPBOX_TOKEN } from '../core/constants';
 
 const DEFAULT_LOCATION = {
   latitude: RESTAURANT_LAT,
@@ -14,7 +14,7 @@ const DEFAULT_LOCATION = {
 };
 
 export default function MapPickerScreen({ navigation, route }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const params = route?.params || {};
 
@@ -27,9 +27,29 @@ export default function MapPickerScreen({ navigation, route }) {
       : null
   );
   const [userLocation, setUserLocation] = useState(null);
+  const [address, setAddress] = useState('');
+  const geoSeq = useRef(0);
+
+  // Обратное геокодирование: координаты -> адрес
+  const reverseGeocode = useCallback(async (lat, lng) => {
+    const seq = ++geoSeq.current;
+    setAddress('…');
+    try {
+      const lang = (i18n.language || 'en').slice(0, 2);
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
+        `?access_token=${MAPBOX_TOKEN}&language=${lang}&limit=1`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (seq !== geoSeq.current) return;
+      setAddress(data?.features?.[0]?.place_name || '');
+    } catch {
+      if (seq === geoSeq.current) setAddress('');
+    }
+  }, []);
 
   const handleMapPress = (lat, lng) => {
     setSelectedLocation({ latitude: lat, longitude: lng });
+    reverseGeocode(lat, lng);
   };
 
   const handleLocate = async () => {
@@ -40,6 +60,7 @@ export default function MapPickerScreen({ navigation, route }) {
       const here = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
       setUserLocation(here);
       setSelectedLocation(here);
+      reverseGeocode(here.latitude, here.longitude);
     } catch (_) {}
   };
 
@@ -49,6 +70,7 @@ export default function MapPickerScreen({ navigation, route }) {
       params.onSelect({
         latitude: selectedLocation.latitude,
         longitude: selectedLocation.longitude,
+        ...(address && address !== '…' ? { address } : {}),
       });
     }
     navigation.goBack();
@@ -86,11 +108,18 @@ export default function MapPickerScreen({ navigation, route }) {
       <View style={styles.footer}>
         <View style={styles.locationSummary}>
           <Text style={Typography.bodySmall}>{t('tap_map_hint')}</Text>
-          <Text style={Typography.body} numberOfLines={1}>
-            {selectedLocation
-              ? `${selectedLocation.latitude.toFixed(5)}, ${selectedLocation.longitude.toFixed(5)}`
-              : t('pick_on_map')}
-          </Text>
+          {selectedLocation ? (
+            <>
+              <Text style={[Typography.body, { fontWeight: '600' }]} numberOfLines={2}>
+                {address && address !== '…' ? `📍 ${address}` : t('locating')}
+              </Text>
+              <Text style={[Typography.bodySmall, { color: Colors.textSecondary }]} numberOfLines={1}>
+                {selectedLocation.latitude.toFixed(5)}, {selectedLocation.longitude.toFixed(5)}
+              </Text>
+            </>
+          ) : (
+            <Text style={Typography.body} numberOfLines={1}>{t('pick_on_map')}</Text>
+          )}
         </View>
         <PrimaryButton
           label={t('confirm_location')}
