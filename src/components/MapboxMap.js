@@ -32,7 +32,8 @@ export default function MapboxMap({
 
   const markersJson = JSON.stringify(markers);
   const userJson = JSON.stringify(userLocation);
-  const showLocate = !!onLocateRequest;
+  // Кнопку показываем, пока местоположение не получено; после — убираем.
+  const showLocate = !!onLocateRequest && !userLocation;
 
   const html = `
 <!DOCTYPE html>
@@ -53,14 +54,15 @@ export default function MapboxMap({
     .user-dot .ring { position:absolute;inset:0;border-radius:50%;background:#E8181B;opacity:.35;animation:pulse 1.8s ease-out infinite; }
     .user-dot .core { position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:#E8181B;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4); }
     @keyframes pulse { 0%{transform:scale(1);opacity:.5} 100%{transform:scale(3.2);opacity:0} }
-    #locate { position:absolute;top:12px;right:12px;z-index:5;display:flex;align-items:center;gap:6px;
-      background:#fff;color:#E8181B;border:none;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;
-      box-shadow:0 3px 8px rgba(0,0,0,.18);font-family:inherit; }
+    #locate { position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:10px;
+      background:#E8181B;color:#fff;border:none;border-radius:999px;padding:14px 26px;font-size:16px;font-weight:800;
+      box-shadow:0 6px 18px rgba(232,24,27,.45);font-family:inherit;white-space:nowrap; }
+    #locate .ic { font-size:20px; }
   </style>
 </head>
 <body>
   <div id="map"></div>
-  ${showLocate ? '<button id="locate">📍 <span>Konum</span></button>' : ''}
+  ${showLocate ? '<button id="locate"><span class="ic">📍</span><span>Konum</span></button>' : ''}
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
   <script>
     mapboxgl.accessToken = '${MAPBOX_TOKEN}';
