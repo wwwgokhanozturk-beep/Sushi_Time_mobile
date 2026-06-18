@@ -17,8 +17,7 @@ import { formatPrice } from '../utils/formatPrice';
 import { RESTAURANT_LAT, RESTAURANT_LNG } from '../core/constants';
 
 export default function OrderTrackingScreen({ route, navigation }) {
-  const { t, i18n } = useTranslation();
-  const currentLang = i18n.language || 'en';
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { orderId } = route.params;
   const { currentOrder, loading, error, loadOrderById } = useOrderStore();
@@ -89,14 +88,13 @@ export default function OrderTrackingScreen({ route, navigation }) {
         lng={RESTAURANT_LNG}
         zoom={14}
         interactive={false}
-        language={currentLang}
         style={styles.mapPlaceholder}
         markers={[
-          { lat: RESTAURANT_LAT, lng: RESTAURANT_LNG, type: 'restaurant', title: 'Sushi Time' },
+          { lat: RESTAURANT_LAT, lng: RESTAURANT_LNG, type: 'restaurant', color: '#E8181B', title: 'Sushi Time' },
           ...(order?.latitude && order?.longitude
-            ? [{ lat: order.latitude, lng: order.longitude, type: 'delivery', title: 'Доставка' }]
+            ? [{ lat: order.latitude, lng: order.longitude, type: 'delivery', color: '#10B981', title: 'Доставка' }]
             : order?.address
-            ? [{ lat: RESTAURANT_LAT - 0.005, lng: RESTAURANT_LNG + 0.005, type: 'delivery', title: 'Доставка' }]
+            ? [{ lat: RESTAURANT_LAT - 0.005, lng: RESTAURANT_LNG + 0.005, type: 'delivery', color: '#10B981', title: 'Доставка' }]
             : []),
         ]}
       />
