@@ -17,7 +17,6 @@ import { useCartStore, selectTotalItems } from '../store/cartStore';
 import { ErrorState } from '../components/SharedWidgets';
 import SushiCard from '../components/SushiCard';
 import PromoCarousel from '../components/PromoCarousel';
-import ContactCard from '../components/ContactCard';
 
 // Sushi-first ordering: Sets → Rolls → Nigiri/Sashimi → snacks → … → drinks last.
 const categoryPriority = (cat) => {
@@ -155,9 +154,6 @@ export default function HomeScreen({ navigation }) {
       >
         {/* ─── Promo Carousel ─── */}
         <PromoCarousel />
-
-        {/* ─── Contact (WhatsApp / phone) ─── */}
-        <ContactCard variant="card" style={{ marginHorizontal: Spacing.md, marginTop: Spacing.sm }} />
 
         {/* ─── Delivery info strip ─── */}
         <View style={styles.infoStrip}>
