@@ -1,3 +1,24 @@
+# Dependencies
+node_modules/
+
+# Logs / debug
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.metro-health-check*
+
+# Native secrets / signing
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# OS files
+.DS_Store
 
 # local env
 .env*.local
