@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
   TextInput,
   FlatList,
+  SectionList,
   TouchableOpacity,
   RefreshControl,
   StyleSheet,
@@ -16,15 +17,39 @@ import { useCartStore, selectTotalItems } from '../store/cartStore';
 import { EmptyState, ErrorState, SkeletonMenuList } from '../components/SharedWidgets';
 import SushiCard from '../components/SushiCard';
 
+// Sets → Rolls / Sushi → Snacks → Drinks  (mirrors web_client MenuPage)
+const categoryPriority = (cat) => {
+  const c = (cat || '').toLowerCase();
+  if (c === 'sets') return 0;
+  if (['rolls', 'maki', 'uramaki', 'hosomaki'].includes(c)) return 1;
+  if (['nigiri', 'sashimi', 'gunkan', 'onigiri'].includes(c)) return 2;
+  if (c === 'tempura') return 3;
+  if (['appetizers', 'salads'].includes(c)) return 4;
+  if (c === 'soups') return 5;
+  if (['wok', 'noodles'].includes(c)) return 6;
+  if (['pizza', 'fast_food'].includes(c)) return 7;
+  if (c === 'desserts') return 8;
+  if (c === 'drinks') return 9;
+  return 10;
+};
+
+const SECTION_HEADER_OFFSET = 8;
+
 export default function MenuScreen({ navigation }) {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { items, categories, selectedCategory, loading, error, loadMenu, filterByCategory } =
-    useMenuStore();
+  const { items, loading, error, loadMenu } = useMenuStore();
   const addToCart = useCartStore((s) => s.addToCart);
   const totalItems = useCartStore(selectTotalItems);
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [activeCat, setActiveCat] = useState(null);
+
+  const sectionListRef = useRef(null);
+  const chipListRef = useRef(null);
+  const isClickScrollingRef = useRef(false);
+  const clickScrollTimeoutRef = useRef(null);
+  const pendingScrollRef = useRef(null);
 
   useEffect(() => {
     loadMenu();
@@ -36,13 +61,109 @@ export default function MenuScreen({ navigation }) {
     setRefreshing(false);
   }, []);
 
-  let filtered = query
-    ? items.filter(
-        (i) =>
-          i.name.toLowerCase().includes(query.toLowerCase()) ||
-          i.category.toLowerCase().includes(query.toLowerCase())
-      )
-    : [...items];
+  // Group items by category in the desired priority order → SectionList sections.
+  const sections = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filteredItems = q
+      ? items.filter(
+          (i) =>
+            i.name.toLowerCase().includes(q) ||
+            (i.category || '').toLowerCase().includes(q)
+        )
+      : items;
+
+    const map = new Map();
+    for (const it of filteredItems) {
+      const key = (it.category || 'other').toLowerCase();
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(it);
+    }
+    // Внутри категории — порядок из админки (sortOrder)
+    for (const arr of map.values()) arr.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    return [...map.entries()]
+      .sort(([a], [b]) => categoryPriority(a) - categoryPriority(b))
+      .map(([cat, data]) => ({ title: cat, data }));
+  }, [items, query]);
+
+  const chipCats = useMemo(() => sections.map((s) => s.title), [sections]);
+
+  const totalCount = useMemo(
+    () => sections.reduce((n, s) => n + s.data.length, 0),
+    [sections]
+  );
+
+  const catLabel = useCallback(
+    (cat) =>
+      t(`cat_${cat}`, {
+        defaultValue: cat.charAt(0).toUpperCase() + cat.slice(1),
+      }),
+    [t]
+  );
+
+  // Default the active chip to the first section, and recover when the current
+  // one is filtered out by search.
+  useEffect(() => {
+    if (!chipCats.length) return;
+    if (!activeCat || !chipCats.includes(activeCat)) setActiveCat(chipCats[0]);
+  }, [chipCats, activeCat]);
+
+  // Scroll-spy: as sections scroll past, mark the topmost visible one active.
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (isClickScrollingRef.current) return;
+    const first = viewableItems.find((v) => v.section);
+    const title = first?.section?.title;
+    if (title) setActiveCat((prev) => (prev === title ? prev : title));
+  }).current;
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 10,
+    minimumViewTime: 50,
+  }).current;
+
+  // Keep the active chip visible inside the horizontal rail.
+  useEffect(() => {
+    if (!activeCat) return;
+    const idx = chipCats.indexOf(activeCat);
+    if (idx >= 0) {
+      chipListRef.current?.scrollToIndex({
+        index: idx,
+        viewPosition: 0.5,
+        animated: true,
+      });
+    }
+  }, [activeCat, chipCats]);
+
+  const scrollToCategory = (cat) => {
+    const sectionIndex = sections.findIndex((s) => s.title === cat);
+    if (sectionIndex < 0) return;
+    setActiveCat(cat);
+    isClickScrollingRef.current = true;
+    pendingScrollRef.current = { sectionIndex, itemIndex: 0 };
+    sectionListRef.current?.scrollToLocation({
+      sectionIndex,
+      itemIndex: 0,
+      viewOffset: SECTION_HEADER_OFFSET,
+      animated: true,
+    });
+    clearTimeout(clickScrollTimeoutRef.current);
+    clickScrollTimeoutRef.current = setTimeout(() => {
+      isClickScrollingRef.current = false;
+    }, 700);
+  };
+
+  // SectionList has no getItemLayout, so a jump to a far, unmeasured section can
+  // fail the first time — retry once enough frames are measured.
+  const onSectionScrollToIndexFailed = () => {
+    const target = pendingScrollRef.current;
+    if (!target) return;
+    setTimeout(() => {
+      sectionListRef.current?.scrollToLocation({
+        ...target,
+        viewOffset: SECTION_HEADER_OFFSET,
+        animated: true,
+      });
+    }, 120);
+  };
 
   const renderItem = ({ item }) => (
     <SushiCard
@@ -51,6 +172,12 @@ export default function MenuScreen({ navigation }) {
       onTap={() => navigation.navigate('ItemDetail', { itemId: item._id })}
       onAdd={() => addToCart(item)}
     />
+  );
+
+  const renderSectionHeader = ({ section }) => (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{catLabel(section.title)}</Text>
+    </View>
   );
 
   return (
@@ -82,32 +209,37 @@ export default function MenuScreen({ navigation }) {
           value={query}
           onChangeText={setQuery}
         />
+        {query.length > 0 && (
+          <TouchableOpacity onPress={() => setQuery('')} activeOpacity={0.7}>
+            <Text style={{ fontSize: 16, color: Colors.textLight }}>✕</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Categories */}
-      {categories.length > 1 && (
+      {/* Sticky category chip bar */}
+      {chipCats.length > 1 && (
         <FlatList
+          ref={chipListRef}
           horizontal
-          data={categories}
+          data={chipCats}
           showsHorizontalScrollIndicator={false}
           style={styles.catListWrapper}
           contentContainerStyle={styles.catList}
           keyExtractor={(item) => item}
+          onScrollToIndexFailed={() => {}}
           renderItem={({ item: cat }) => {
-            const isSelected =
-              (selectedCategory === null && cat === 'All') || selectedCategory === cat;
-            const displayName =
-              cat === 'All'
-                ? t('all')
-                : t(`cat_${cat.toLowerCase()}`, { defaultValue: cat.charAt(0).toUpperCase() + cat.slice(1) });
+            const isSelected = activeCat === cat;
             return (
               <TouchableOpacity
                 style={[styles.catChip, isSelected && styles.catChipSelected]}
-                onPress={() => filterByCategory(cat)}
+                onPress={() => scrollToCategory(cat)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.catChipText, isSelected && styles.catChipTextSelected]} numberOfLines={1}>
-                  {displayName}
+                <Text
+                  style={[styles.catChipText, isSelected && styles.catChipTextSelected]}
+                  numberOfLines={1}
+                >
+                  {catLabel(cat)}
                 </Text>
               </TouchableOpacity>
             );
@@ -121,18 +253,30 @@ export default function MenuScreen({ navigation }) {
           <ErrorState message={error} onRetry={loadMenu} />
         ) : loading && items.length === 0 ? (
           <SkeletonMenuList count={6} />
-        ) : filtered.length === 0 && !loading ? (
+        ) : totalCount === 0 && !loading ? (
           <EmptyState title={t('no_items_found')} subtitle={t('try_different')} emoji="🔎" />
         ) : (
-          <FlatList
-            data={filtered}
-            numColumns={1}
-            contentContainerStyle={{ paddingTop: Spacing.xs, paddingBottom: totalItems > 0 ? 90 : Spacing.lg }}
+          <SectionList
+            ref={sectionListRef}
+            sections={sections}
             keyExtractor={(item) => item._id}
             renderItem={renderItem}
+            renderSectionHeader={renderSectionHeader}
+            stickySectionHeadersEnabled={false}
             showsVerticalScrollIndicator={false}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            onScrollToIndexFailed={onSectionScrollToIndexFailed}
+            contentContainerStyle={{
+              paddingTop: Spacing.xs,
+              paddingBottom: totalItems > 0 ? 90 : Spacing.lg,
+            }}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={Colors.primary}
+              />
             }
           />
         )}
@@ -246,6 +390,18 @@ const styles = StyleSheet.create({
   catChipSelected: { backgroundColor: Colors.primary, borderColor: Colors.primaryDark, ...Shadows.glow },
   catChipText: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
   catChipTextSelected: { color: '#fff' },
+  sectionHeader: {
+    backgroundColor: Colors.background,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    letterSpacing: -0.3,
+  },
   stickyCart: {
     position: 'absolute',
     bottom: 0,
