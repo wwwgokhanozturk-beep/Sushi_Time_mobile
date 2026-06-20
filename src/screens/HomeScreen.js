@@ -39,7 +39,7 @@ const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 export default function HomeScreen({ navigation }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { items, loading, error, loadMenu } = useMenuStore();
+  const { items, loading, error, loadMenu, categoryOrder } = useMenuStore();
   const addToCart = useCartStore((s) => s.addToCart);
   const totalItems = useCartStore(selectTotalItems);
   const [refreshing, setRefreshing] = useState(false);
@@ -72,8 +72,17 @@ export default function HomeScreen({ navigation }) {
       map.get(key).push(it);
     }
     for (const arr of map.values()) arr.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-    return [...map.entries()].sort(([a], [b]) => categoryPriority(a) - categoryPriority(b));
-  }, [items]);
+    const orderIndex = (cat) => {
+      const i = categoryOrder.indexOf((cat || '').toLowerCase());
+      return i === -1 ? Infinity : i;
+    };
+    return [...map.entries()].sort(([a], [b]) => {
+      const oa = orderIndex(a);
+      const ob = orderIndex(b);
+      if (oa !== ob) return oa - ob;
+      return categoryPriority(a) - categoryPriority(b);
+    });
+  }, [items, categoryOrder]);
 
   const catTitle = (cat) =>
     t(`cat_${cat.toLowerCase()}`, { defaultValue: capitalize(cat) });

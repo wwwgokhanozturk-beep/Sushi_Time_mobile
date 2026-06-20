@@ -5,6 +5,7 @@ import { ApiConstants } from '../core/api';
 export const useMenuStore = create((set, get) => ({
   items: [],
   categories: ['All'],
+  categoryOrder: [],
   selectedCategory: null,
   loading: false,
   error: null,
@@ -12,20 +13,22 @@ export const useMenuStore = create((set, get) => ({
   loadMenu: async (category) => {
     set({ loading: true, error: null });
     try {
-      const params = category ? { category } : {};
-      const [itemsRes, catsRes] = await Promise.all([
+      const params = { limit: 1000, ...(category ? { category } : {}) };
+      const needsMeta = get().categories.length <= 1;
+      const [itemsRes, catsRes, orderRes] = await Promise.all([
         httpClient.get(ApiConstants.menu, { params }),
-        get().categories.length <= 1
-          ? httpClient.get(ApiConstants.menuCategories)
-          : Promise.resolve(null),
+        needsMeta ? httpClient.get(ApiConstants.menuCategories) : Promise.resolve(null),
+        needsMeta ? httpClient.get('/settings/category-order') : Promise.resolve(null),
       ]);
       const items = itemsRes.data?.data?.items || [];
       const cats = catsRes?.data?.data?.categories;
+      const order = orderRes?.data?.data?.categoryOrder;
       set({
         items,
         loading: false,
         selectedCategory: category || null,
         ...(cats ? { categories: ['All', ...cats] } : {}),
+        ...(order ? { categoryOrder: order } : {}),
       });
     } catch (e) {
       console.warn('[SushiTime] loadMenu error:', e.message, e.response?.status);
@@ -40,7 +43,7 @@ export const useMenuStore = create((set, get) => ({
     const cat = category === 'All' ? null : category;
     set({ loading: true, error: null });
     try {
-      const params = cat ? { category: cat } : {};
+      const params = { limit: 1000, ...(cat ? { category: cat } : {}) };
       const res = await httpClient.get(ApiConstants.menu, { params });
       set({
         items: res.data?.data?.items || [],

@@ -38,7 +38,7 @@ const SECTION_HEADER_OFFSET = 8;
 export default function MenuScreen({ navigation }) {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { items, loading, error, loadMenu } = useMenuStore();
+  const { items, loading, error, loadMenu, categoryOrder } = useMenuStore();
   const addToCart = useCartStore((s) => s.addToCart);
   const totalItems = useCartStore(selectTotalItems);
   const [query, setQuery] = useState('');
@@ -80,10 +80,19 @@ export default function MenuScreen({ navigation }) {
     }
     // Внутри категории — порядок из админки (sortOrder)
     for (const arr of map.values()) arr.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const orderIndex = (cat) => {
+      const i = categoryOrder.indexOf((cat || '').toLowerCase());
+      return i === -1 ? Infinity : i;
+    };
     return [...map.entries()]
-      .sort(([a], [b]) => categoryPriority(a) - categoryPriority(b))
+      .sort(([a], [b]) => {
+        const oa = orderIndex(a);
+        const ob = orderIndex(b);
+        if (oa !== ob) return oa - ob;
+        return categoryPriority(a) - categoryPriority(b);
+      })
       .map(([cat, data]) => ({ title: cat, data }));
-  }, [items, query]);
+  }, [items, query, categoryOrder]);
 
   const chipCats = useMemo(() => sections.map((s) => s.title), [sections]);
 
