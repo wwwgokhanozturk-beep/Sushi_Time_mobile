@@ -53,7 +53,13 @@ export default function CheckoutScreen({ navigation }) {
       if (profile.name && !name) setName(profile.name);
       if (profile.phone && !phone) setPhone(profile.phone);
       if (profile.address && !address) setAddress(profile.address);
+      if (profile.buildingName && !buildingName) setBuildingName(profile.buildingName);
+      if (profile.floor && !floor) setFloor(profile.floor);
+      if (profile.apartment && !apartment) setApartment(profile.apartment);
+      if (profile.doorCode && !doorCode) setDoorCode(profile.doorCode);
       if (profile.notes && !notes) setNotes(profile.notes);
+      if (profile.latitude != null && selectedLat == null) setSelectedLat(profile.latitude);
+      if (profile.longitude != null && selectedLng == null) setSelectedLng(profile.longitude);
     }
   }, [profile.loaded]);
 
@@ -115,8 +121,15 @@ export default function CheckoutScreen({ navigation }) {
     const order = await placeOrder(payload);
     if (!order) return;
 
-    // Save entered details to profile for future lookups
-    profile.updateProfile({ name: name.trim(), phone: phone.trim(), address: address.trim(), notes: notes.trim() });
+    // Save entered details to profile so the next order is pre-filled.
+    profile.updateProfile({
+      name: name.trim(), phone: phone.trim(), address: address.trim(),
+      buildingName: buildingName.trim(), floor: floor.trim(),
+      apartment: apartment.trim(), doorCode: doorCode.trim(), notes: notes.trim(),
+      ...(selectedLat != null && selectedLng != null
+        ? { latitude: selectedLat, longitude: selectedLng }
+        : {}),
+    });
 
     // Online payment is disabled for now — re-enable this branch when iyzico is reconnected.
     // if (paymentMethod === 'card_online') {

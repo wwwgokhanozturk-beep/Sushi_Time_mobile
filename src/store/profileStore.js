@@ -7,7 +7,13 @@ const defaultProfile = {
   name: '',
   phone: '',
   address: '',
+  buildingName: '',
+  floor: '',
+  apartment: '',
+  doorCode: '',
   notes: '',
+  latitude: null,
+  longitude: null,
 };
 
 const defaultAuth = {
@@ -42,7 +48,13 @@ export const useProfileStore = create((set, get) => ({
       name: fields.name ?? current.name,
       phone: fields.phone ?? current.phone,
       address: fields.address ?? current.address,
+      buildingName: fields.buildingName ?? current.buildingName,
+      floor: fields.floor ?? current.floor,
+      apartment: fields.apartment ?? current.apartment,
+      doorCode: fields.doorCode ?? current.doorCode,
       notes: fields.notes ?? current.notes,
+      latitude: fields.latitude ?? current.latitude,
+      longitude: fields.longitude ?? current.longitude,
     };
     set(patch);
     await _persist(get);
@@ -84,7 +96,13 @@ async function _persist(get) {
     name: s.name,
     phone: s.phone,
     address: s.address,
+    buildingName: s.buildingName,
+    floor: s.floor,
+    apartment: s.apartment,
+    doorCode: s.doorCode,
     notes: s.notes,
+    latitude: s.latitude,
+    longitude: s.longitude,
     token: s.token,
     refreshToken: s.refreshToken,
     userId: s.userId,

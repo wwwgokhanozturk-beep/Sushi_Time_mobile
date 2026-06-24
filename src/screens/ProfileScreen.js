@@ -28,6 +28,12 @@ export default function ProfileScreen({ navigation }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [buildingName, setBuildingName] = useState('');
+  const [floor, setFloor] = useState('');
+  const [apartment, setApartment] = useState('');
+  const [doorCode, setDoorCode] = useState('');
+  const [lat, setLat] = useState(null);
+  const [lng, setLng] = useState(null);
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
@@ -40,12 +46,35 @@ export default function ProfileScreen({ navigation }) {
       setName(profile.name);
       setPhone(profile.phone);
       setAddress(profile.address);
+      setBuildingName(profile.buildingName || '');
+      setFloor(profile.floor || '');
+      setApartment(profile.apartment || '');
+      setDoorCode(profile.doorCode || '');
+      setLat(profile.latitude ?? null);
+      setLng(profile.longitude ?? null);
     }
   }, [profile.loaded]);
 
   const handleSave = async () => {
-    await profile.updateProfile({ name: name.trim(), phone: phone.trim(), address: address.trim() });
+    await profile.updateProfile({
+      name: name.trim(), phone: phone.trim(), address: address.trim(),
+      buildingName: buildingName.trim(), floor: floor.trim(),
+      apartment: apartment.trim(), doorCode: doorCode.trim(),
+      ...(lat != null && lng != null ? { latitude: lat, longitude: lng } : {}),
+    });
     setEditing(false);
+  };
+
+  // Open the full-screen map picker; on confirm it returns the point + address.
+  const handlePickMap = () => {
+    navigation.navigate('MapPicker', {
+      ...(lat != null && lng != null ? { initialLat: lat, initialLng: lng } : {}),
+      onSelect: (loc) => {
+        setLat(loc.latitude);
+        setLng(loc.longitude);
+        if (loc.address) setAddress(loc.address);
+      },
+    });
   };
 
   const handleLogout = () => {
@@ -170,6 +199,65 @@ export default function ProfileScreen({ navigation }) {
             <Text style={Typography.body} numberOfLines={3}>{address || '—'}</Text>
           )}
         </View>
+
+        {/* Delivery point on the map */}
+        <View style={styles.field}>
+          <Text style={Typography.label} numberOfLines={1}>{t('delivery_location')}</Text>
+          {editing ? (
+            <TouchableOpacity style={styles.mapBtn} onPress={handlePickMap} activeOpacity={0.8}>
+              <Text style={styles.mapBtnText}>📍 {t('pick_on_map')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={Typography.body} numberOfLines={1}>
+              {lat != null ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : '—'}
+            </Text>
+          )}
+          {editing && lat != null && (
+            <Text style={[Typography.bodySmall, { marginTop: Spacing.xs }]} numberOfLines={1}>
+              {lat.toFixed(5)}, {lng.toFixed(5)}
+            </Text>
+          )}
+        </View>
+
+        {/* Building / floor */}
+        <View style={styles.rowFields}>
+          <View style={[styles.field, { flex: 1 }]}>
+            <Text style={Typography.label} numberOfLines={1}>{t('building_name')}</Text>
+            {editing ? (
+              <TextInput style={styles.input} value={buildingName} onChangeText={setBuildingName} placeholderTextColor={Colors.textLight} />
+            ) : (
+              <Text style={Typography.body} numberOfLines={1}>{buildingName || '—'}</Text>
+            )}
+          </View>
+          <View style={[styles.field, { flex: 1 }]}>
+            <Text style={Typography.label} numberOfLines={1}>{t('floor')}</Text>
+            {editing ? (
+              <TextInput style={styles.input} value={floor} onChangeText={setFloor} keyboardType="number-pad" placeholderTextColor={Colors.textLight} />
+            ) : (
+              <Text style={Typography.body} numberOfLines={1}>{floor || '—'}</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Apartment / door code */}
+        <View style={styles.rowFields}>
+          <View style={[styles.field, { flex: 1 }]}>
+            <Text style={Typography.label} numberOfLines={1}>{t('apartment')}</Text>
+            {editing ? (
+              <TextInput style={styles.input} value={apartment} onChangeText={setApartment} placeholderTextColor={Colors.textLight} />
+            ) : (
+              <Text style={Typography.body} numberOfLines={1}>{apartment || '—'}</Text>
+            )}
+          </View>
+          <View style={[styles.field, { flex: 1 }]}>
+            <Text style={Typography.label} numberOfLines={1}>{t('door_code')}</Text>
+            {editing ? (
+              <TextInput style={styles.input} value={doorCode} onChangeText={setDoorCode} placeholderTextColor={Colors.textLight} />
+            ) : (
+              <Text style={Typography.body} numberOfLines={1}>{doorCode || '—'}</Text>
+            )}
+          </View>
+        </View>
       </View>
 
       {/* Quick links */}
@@ -277,6 +365,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.divider,
   },
+  rowFields: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  mapBtn: {
+    marginTop: Spacing.xs,
+    height: 46,
+    borderRadius: Radius.lg,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+  },
+  mapBtnText: { color: Colors.primary, fontWeight: '700', fontSize: 14 },
   input: {
     height: 50,
     borderRadius: Radius.lg,
