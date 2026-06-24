@@ -17,6 +17,7 @@ import { useCartStore, selectTotalItems } from '../store/cartStore';
 import { ErrorState } from '../components/SharedWidgets';
 import SushiCard from '../components/SushiCard';
 import PromoCarousel from '../components/PromoCarousel';
+import BannerCarousel from '../components/BannerCarousel';
 
 // Sushi-first ordering: Sets → Rolls → Nigiri/Sashimi → snacks → … → drinks last.
 const categoryPriority = (cat) => {
@@ -155,20 +156,23 @@ export default function HomeScreen({ navigation }) {
         ref={scrollRef}
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        stickyHeaderIndices={[3]}
+        stickyHeaderIndices={[4]}
         onScroll={onScroll}
         scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
         }
       >
-        {/* ─── Promo Carousel ─── */}
+        {/* ─── Hero Banner (matches the website's top banner) ─── */}
+        <BannerCarousel />
+
+        {/* ─── Promo Carousel (stories) ─── */}
         <PromoCarousel />
 
         {/* ─── Delivery info strip ─── */}
         <View style={styles.infoStrip}>
           <View style={styles.infoChip}>
-            <Text style={{ fontSize: 16 }}>🚴</Text>
+            <Text style={{ fontSize: 16 }}>🚚</Text>
             <Text style={styles.infoChipText} numberOfLines={1}>{t('free_delivery')}</Text>
           </View>
           <View style={styles.infoChip}>
@@ -177,7 +181,7 @@ export default function HomeScreen({ navigation }) {
           </View>
           <View style={styles.infoChip}>
             <Text style={{ fontSize: 16 }}>⭐</Text>
-            <Text style={styles.infoChipText}>4.8</Text>
+            <Text style={styles.infoChipText}>4.9</Text>
           </View>
         </View>
 
