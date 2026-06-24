@@ -21,6 +21,7 @@
     "expo-location": "~18.0.4",
     "expo-notifications": "~0.32.16",
     "expo-status-bar": "~3.0.9",
+    "expo-video": "~3.0.16",
     "expo-web-browser": "~15.0.10",
     "i18next": "^24.2.2",
     "react": "19.1.0",

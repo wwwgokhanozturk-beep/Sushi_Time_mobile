@@ -48,7 +48,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Sushi Time использует геолокацию, чтобы показать ваше положение на карте и рассчитать время доставки."
         }
-      ]
+      ],
+      "expo-video"
     ]
   }
 }

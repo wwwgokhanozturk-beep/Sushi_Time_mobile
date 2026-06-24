@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { Colors, Spacing, Radius } from '../core/theme';
 import { usePromotionStore } from '../store/promotionStore';
 
@@ -32,6 +33,39 @@ function fmtDate(str) {
   if (!str) return null;
   const d = new Date(str);
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// A promotion's media lives in `imageUrl`; it may actually be a video. The
+// native <Image> only renders a frame on iOS and nothing on Android, so video
+// URLs must be played with expo-video instead.
+const VIDEO_URL_RE = /\.(mp4|m4v|mov|webm|m3u8|3gp|mkv)(\?.*)?$/i;
+const isVideoUrl = (url) => typeof url === 'string' && VIDEO_URL_RE.test(url);
+
+// Plays a promo video. `muted` story = full sound; bubble preview = silent loop.
+function PromoVideo({ uri, style, muted = false, contentFit = 'cover' }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+    p.muted = muted;
+    p.play();
+  });
+  return (
+    <VideoView
+      style={style}
+      player={player}
+      contentFit={contentFit}
+      nativeControls={false}
+      allowsFullscreen={false}
+      pointerEvents="none"
+    />
+  );
+}
+
+// Picks a video player or an <Image> based on the media URL.
+function PromoMedia({ uri, style, muted, contentFit, resizeMode = 'cover' }) {
+  if (isVideoUrl(uri)) {
+    return <PromoVideo key={uri} uri={uri} style={style} muted={muted} contentFit={contentFit} />;
+  }
+  return <Image source={{ uri }} style={style} resizeMode={resizeMode} />;
 }
 
 // ─── Full-screen story viewer ─────────────────────────────────────────────────
@@ -156,9 +190,9 @@ function StoryViewer({ visible, promotions, startIndex, lang, onClose, onMarkSee
         {...panResponder.panHandlers}
       >
 
-        {/* ── Background image ── */}
+        {/* ── Background media (image or video) ── */}
         {promo.imageUrl ? (
-          <Image source={{ uri: promo.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <PromoMedia uri={promo.imageUrl} style={StyleSheet.absoluteFill} muted={false} contentFit="cover" />
         ) : (
           <View style={[StyleSheet.absoluteFill, sv.placeholder]}>
             <Text style={{ fontSize: 100 }}>🎉</Text>
@@ -292,7 +326,7 @@ export default function PromoCarousel() {
               <View style={[styles.ring, isSeen && styles.ringSeen]}>
                 <View style={styles.innerWrap}>
                   {item.imageUrl ? (
-                    <Image source={{ uri: item.imageUrl }} style={styles.bubbleImg} resizeMode="cover" />
+                    <PromoMedia uri={item.imageUrl} style={styles.bubbleImg} muted contentFit="cover" />
                   ) : (
                     <View style={styles.bubbleFallback}>
                       <Text style={{ fontSize: 30 }}>🎉</Text>
