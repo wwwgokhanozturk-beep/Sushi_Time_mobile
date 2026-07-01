@@ -16,7 +16,6 @@ import { useMenuStore } from '../store/menuStore';
 import { useCartStore, selectTotalItems } from '../store/cartStore';
 import { ErrorState } from '../components/SharedWidgets';
 import SushiCard from '../components/SushiCard';
-import PromoCarousel from '../components/PromoCarousel';
 import BannerCarousel from '../components/BannerCarousel';
 
 // Sushi-first ordering: Sets → Rolls → Nigiri/Sashimi → snacks → … → drinks last.
@@ -165,9 +164,6 @@ export default function HomeScreen({ navigation }) {
       >
         {/* ─── Hero Banner (matches the website's top banner) ─── */}
         <BannerCarousel />
-
-        {/* ─── Promo Carousel (stories) ─── */}
-        <PromoCarousel />
 
         {/* ─── Delivery info strip ─── */}
         <View style={styles.infoStrip}>
