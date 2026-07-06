@@ -219,7 +219,7 @@ function StoryViewer({ visible, promotions, startIndex, lang, onClose, onMarkSee
               <Text style={sv.badgeTxt}>{promo.badge}</Text>
             </View>
           )}
-          <Text style={sv.title}>{title}</Text>
+          {title ? <Text style={sv.title}>{title}</Text> : null}
           <View style={sv.metaRow}>
             {promo.discountPercent != null && (
               <View style={sv.chip}>
@@ -300,9 +300,11 @@ export default function PromoCarousel() {
                   )}
                 </View>
               </View>
-              <Text style={[styles.label, isSeen && styles.labelSeen]} numberOfLines={2}>
-                {label}
-              </Text>
+              {label ? (
+                <Text style={[styles.label, isSeen && styles.labelSeen]} numberOfLines={2}>
+                  {label}
+                </Text>
+              ) : null}
             </TouchableOpacity>
           );
         }}
