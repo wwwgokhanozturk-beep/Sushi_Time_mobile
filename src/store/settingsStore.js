@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import * as Location from 'expo-location';
 import httpClient from '../core/httpClient';
 import { ApiConstants } from '../core/api';
 import { computeOpenState } from '../core/businessHours';
@@ -56,6 +57,33 @@ export const useSettingsStore = create((set, get) => ({
     if (!name) return 0;
     const d = get().districts.find((x) => x.name === name);
     return d ? Number(d.minOrder) || 0 : 0;
+  },
+
+  // Геолокация клиента → район доставки (минимум показываем ещё до корзины)
+  deliveryDistrict: '',
+  locationAsked: false,
+  setDeliveryDistrict: (name) => set({ deliveryDistrict: name || '' }),
+
+  // Спрашиваем геолокацию один раз при входе. При согласии — обратное
+  // геокодирование определяет район. Отказ — не проблема (тихо игнорим).
+  detectLocation: async () => {
+    if (get().locationAsked) return;
+    set({ locationAsked: true });
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return; // отказ — без проблем
+      await get().loadDistrictMinimums();
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { latitude, longitude } = pos.coords;
+      const places = await Location.reverseGeocodeAsync({ latitude, longitude });
+      const p = places?.[0] || {};
+      const hay = [p.district, p.subregion, p.city, p.name, p.street, p.region]
+        .filter(Boolean).join(' ').toLowerCase();
+      const hit = get().districts.find((d) => hay.includes(d.name.toLowerCase()));
+      if (hit) set({ deliveryDistrict: hit.name });
+    } catch (e) {
+      console.warn('[SushiTime] detectLocation error:', e.message);
+    }
   },
 
   // Открыт ли ресторан сейчас (по часовому поясу заведения). До загрузки — открыт.

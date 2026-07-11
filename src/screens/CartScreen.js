@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, Radius, Shadows } from '../core/theme';
 import { useCartStore, selectTotalPrice, selectTotalItems } from '../store/cartStore';
 import { PrimaryButton, EmptyState } from '../components/SharedWidgets';
+import DeliveryMinBanner from '../components/DeliveryMinBanner';
 import { formatPrice } from '../utils/formatPrice';
 import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, SERVICE_FEE } from '../core/constants';
 
@@ -100,6 +101,8 @@ export default function CartScreen({ navigation }) {
           );
         }}
       />
+
+      <DeliveryMinBanner />
 
       {/* Summary */}
       <View style={styles.summary}>

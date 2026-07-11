@@ -2,14 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import * as Location from 'expo-location';
 import { RootNavigator } from './navigation/RootNavigator';
 import SplashScreen from './screens/SplashScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppBackground from './components/AppBackground';
+import ClosedNotice from './components/ClosedNotice';
 import './core/i18n';
 import { useNotificationStore } from './store/notificationStore';
 import { useProfileStore } from './store/profileStore';
+import { useSettingsStore } from './store/settingsStore';
 import { setupNotificationListeners } from './core/notifications';
 
 const navTheme = {
@@ -30,8 +31,10 @@ export default function App() {
   useEffect(() => {
     useNotificationStore.getState().registerToken();
     useProfileStore.getState().loadProfile();
-    // Запрашиваем разрешение на геолокацию при старте приложения
-    Location.requestForegroundPermissionsAsync().catch(() => {});
+    useSettingsStore.getState().loadBusinessHours();
+    // Запрашиваем геолокацию при старте: по ней определяем район и показываем
+    // минимум ещё до корзины. Отказ — не проблема.
+    useSettingsStore.getState().detectLocation();
   }, []);
 
   // Set up notification listeners
@@ -67,6 +70,7 @@ export default function App() {
           <NavigationContainer ref={navigationRef} theme={navTheme}>
             <StatusBar style="light" />
             <RootNavigator />
+            <ClosedNotice navigationRef={navigationRef} />
           </NavigationContainer>
         </AppBackground>
       </SafeAreaProvider>

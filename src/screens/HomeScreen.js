@@ -17,6 +17,7 @@ import { useCartStore, selectTotalItems } from '../store/cartStore';
 import { ErrorState } from '../components/SharedWidgets';
 import SushiCard from '../components/SushiCard';
 import BannerCarousel from '../components/BannerCarousel';
+import DeliveryMinBanner from '../components/DeliveryMinBanner';
 
 // Sushi-first ordering: Sets → Rolls → Nigiri/Sashimi → snacks → … → drinks last.
 const categoryPriority = (cat) => {
@@ -150,6 +151,9 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Delivery minimum for the detected district — shown before the cart */}
+      <DeliveryMinBanner />
 
       <ScrollView
         ref={scrollRef}
