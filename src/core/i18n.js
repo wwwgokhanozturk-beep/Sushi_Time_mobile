@@ -54,6 +54,9 @@ const en = {
   name_required: 'Name is required',
   phone_required: 'Phone is required',
   address_required: 'Address is required',
+  district: 'District', select_district: 'Select your district', district_required: 'Please select your district',
+  district_min_notice: 'Minimum order in {{district}} is {{min}} ₺ — add {{short}} ₺ more to order.',
+  district_min_short: 'Add {{short}} ₺ more',
   my_orders: 'My Orders',
   no_orders_yet: 'No orders yet',
   orders_appear_here: 'Your order history will appear here',
@@ -152,6 +155,13 @@ const en = {
   register_error: 'Registration failed. This email may already be taken.',
   continue_as_guest: 'Continue as Guest',
   sign_in_to_save: 'Sign in to save & sync your profile',
+  // Çalışma saatleri / closed state
+  closed_title: "We're currently closed",
+  closed_subtitle: 'Online ordering is unavailable right now. You can still browse our menu.',
+  closed_today_hours: "Today's hours",
+  closed_today_off: 'Closed today',
+  closed_order_blocked: "We're closed right now — ordering is unavailable.",
+  view_menu: 'View menu',
 };
 
 const ru = {
@@ -206,6 +216,9 @@ const ru = {
   name_required: 'Имя обязательно',
   phone_required: 'Телефон обязателен',
   address_required: 'Адрес обязателен',
+  district: 'Район', select_district: 'Выберите район', district_required: 'Выберите район доставки',
+  district_min_notice: 'Минимальный заказ в районе {{district}} — {{min}} ₺. Добавьте ещё {{short}} ₺.',
+  district_min_short: 'Добавьте ещё {{short}} ₺',
   my_orders: 'Мои заказы',
   no_orders_yet: 'Заказов пока нет',
   orders_appear_here: 'История заказов появится здесь',
@@ -304,6 +317,13 @@ const ru = {
   register_error: 'Ошибка регистрации. Возможно, email уже занят.',
   continue_as_guest: 'Продолжить как гость',
   sign_in_to_save: 'Войдите, чтобы синхронизировать профиль',
+  // Режим работы / закрыто
+  closed_title: 'Сейчас мы закрыты',
+  closed_subtitle: 'Онлайн-заказы временно недоступны. Но вы можете посмотреть меню.',
+  closed_today_hours: 'Часы работы сегодня',
+  closed_today_off: 'Сегодня выходной',
+  closed_order_blocked: 'Сейчас мы закрыты — заказ недоступен.',
+  view_menu: 'Посмотреть меню',
 };
 
 const tr = {
@@ -358,6 +378,9 @@ const tr = {
   name_required: 'Ad gerekli',
   phone_required: 'Telefon gerekli',
   address_required: 'Adres gerekli',
+  district: 'Bölge', select_district: 'Bölgenizi seçin', district_required: 'Lütfen bölgenizi seçin',
+  district_min_notice: '{{district}} bölgesinde minimum sipariş {{min}} ₺ — {{short}} ₺ daha ekleyin.',
+  district_min_short: '{{short}} ₺ daha ekleyin',
   my_orders: 'Siparişlerim',
   no_orders_yet: 'Henüz sipariş yok',
   orders_appear_here: 'Sipariş geçmişiniz burada görünecek',
@@ -456,6 +479,13 @@ const tr = {
   register_error: 'Kayıt başarısız. Bu e-posta kullanımda olabilir.',
   continue_as_guest: 'Misafir Olarak Devam Et',
   sign_in_to_save: 'Profili senkronize etmek için giriş yapın',
+  // Çalışma saatleri / kapalı durumu
+  closed_title: 'Şu anda kapalıyız',
+  closed_subtitle: 'Çevrimiçi sipariş şu an kapalı. Yine de menümüze göz atabilirsiniz.',
+  closed_today_hours: 'Bugünkü çalışma saatleri',
+  closed_today_off: 'Bugün kapalıyız',
+  closed_order_blocked: 'Şu anda kapalıyız — sipariş alınamıyor.',
+  view_menu: 'Menüye göz at',
 };
 
 const STORAGE_KEY = 'sushi_time_language';

@@ -14,6 +14,7 @@ import { Colors, Typography, Spacing, Radius, Shadows } from '../core/theme';
 import { useCartStore, selectTotalPrice } from '../store/cartStore';
 import { useOrderStore } from '../store/orderStore';
 import { useProfileStore } from '../store/profileStore';
+import { useSettingsStore } from '../store/settingsStore';
 import { PrimaryButton } from '../components/SharedWidgets';
 import { formatPrice } from '../utils/formatPrice';
 import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, SERVICE_FEE, TIP_OPTIONS } from '../core/constants';
@@ -28,10 +29,16 @@ export default function CheckoutScreen({ navigation }) {
   const totalPrice = useCartStore(selectTotalPrice);
   const { placeOrder, loading, error: orderError } = useOrderStore();
   const profile = useProfileStore();
+  const isOpenNow = useSettingsStore((s) => s.isOpenNow);
+  const open = isOpenNow();
+  const districts = useSettingsStore((s) => s.districts);
+  const loadDistrictMinimums = useSettingsStore((s) => s.loadDistrictMinimums);
+  const districtMinFor = useSettingsStore((s) => s.districtMinFor);
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [district, setDistrict] = useState('');
   const [buildingName, setBuildingName] = useState('');
   const [floor, setFloor] = useState('');
   const [apartment, setApartment] = useState('');
@@ -47,12 +54,24 @@ export default function CheckoutScreen({ navigation }) {
   // temporarily disabled; keep the related code below commented out for future re-enable.
   const [paymentMethod, setPaymentMethod] = useState('cash');
 
+  useEffect(() => { loadDistrictMinimums(); }, []);
+
+  // Auto-pick the district when its name appears in the address (only while none
+  // is chosen yet, so a manual choice is never overridden).
+  useEffect(() => {
+    if (district || !districts.length || !address) return;
+    const a = address.toLowerCase();
+    const hit = districts.find((d) => a.includes(d.name.toLowerCase()));
+    if (hit) setDistrict(hit.name);
+  }, [address, districts]);
+
   // Auto-fill from saved profile
   useEffect(() => {
     if (profile.loaded) {
       if (profile.name && !name) setName(profile.name);
       if (profile.phone && !phone) setPhone(profile.phone);
       if (profile.address && !address) setAddress(profile.address);
+      if (profile.district && !district) setDistrict(profile.district);
       if (profile.buildingName && !buildingName) setBuildingName(profile.buildingName);
       if (profile.floor && !floor) setFloor(profile.floor);
       if (profile.apartment && !apartment) setApartment(profile.apartment);
@@ -66,6 +85,11 @@ export default function CheckoutScreen({ navigation }) {
   const deliveryFee = totalPrice >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const discount = promoApplied ? totalPrice * promoApplied : 0;
   const grandTotal = Math.max(0, totalPrice - discount) + deliveryFee + SERVICE_FEE + tip;
+
+  // Per-district minimum order (on the food subtotal, matching the server check).
+  const districtMin = districtMinFor(district);
+  const belowMin = districtMin > 0 && totalPrice < districtMin;
+  const shortAmount = belowMin ? Math.ceil(districtMin - totalPrice) : 0;
 
   const handleApplyPromo = () => {
     const code = promoCode.trim().toUpperCase();
@@ -94,14 +118,18 @@ export default function CheckoutScreen({ navigation }) {
   };
 
   const handleSubmit = async () => {
+    if (!open) return Alert.alert('', t('closed_order_blocked'));
     if (!name.trim()) return Alert.alert('', t('name_required'));
     if (!phone.trim()) return Alert.alert('', t('phone_required'));
     if (!address.trim()) return Alert.alert('', t('address_required'));
+    if (!district) return Alert.alert('', t('district_required'));
+    if (belowMin) return Alert.alert('', t('district_min_notice', { district, min: districtMin, short: shortAmount }));
 
     const payload = {
       customerName: name.trim(),
       phone: phone.trim(),
       address: address.trim(),
+      district,
       buildingName: buildingName.trim(),
       floor: floor.trim(),
       apartment: apartment.trim(),
@@ -123,7 +151,7 @@ export default function CheckoutScreen({ navigation }) {
 
     // Save entered details to profile so the next order is pre-filled.
     profile.updateProfile({
-      name: name.trim(), phone: phone.trim(), address: address.trim(),
+      name: name.trim(), phone: phone.trim(), address: address.trim(), district,
       buildingName: buildingName.trim(), floor: floor.trim(),
       apartment: apartment.trim(), doorCode: doorCode.trim(), notes: notes.trim(),
       ...(selectedLat != null && selectedLng != null
@@ -192,6 +220,26 @@ export default function CheckoutScreen({ navigation }) {
           onChangeText={setAddress}
           multiline
         />
+
+        {/* District (bölge) — required; drives the per-district minimum */}
+        <Text style={[Typography.heading3, { marginTop: Spacing.md }]}>{t('district')}</Text>
+        <View style={styles.districtWrap}>
+          {districts.map((d) => {
+            const active = district === d.name;
+            return (
+              <TouchableOpacity
+                key={d.name}
+                style={[styles.districtChip, active && styles.districtChipActive]}
+                onPress={() => setDistrict(d.name)}
+              >
+                <Text style={[styles.districtChipText, active && { color: '#fff' }]}>
+                  {d.name}{d.minOrder > 0 ? ` · ${d.minOrder}₺` : ''}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         <View style={styles.rowInputs}>
           <TextInput
             style={[styles.input, styles.inputHalf]}
@@ -351,7 +399,19 @@ export default function CheckoutScreen({ navigation }) {
         </View>
 
         <View style={{ marginTop: Spacing.xl }}>
-          {orderError ? (
+          {!open ? (
+            <View style={styles.closedBanner}>
+              <Text style={styles.closedBannerText}>🌙 {t('closed_order_blocked')}</Text>
+            </View>
+          ) : null}
+          {open && belowMin ? (
+            <View style={styles.minBanner}>
+              <Text style={styles.minBannerText}>
+                ⚠️ {t('district_min_notice', { district, min: districtMin, short: shortAmount })}
+              </Text>
+            </View>
+          ) : null}
+          {open && orderError ? (
             <View style={styles.errorBanner}>
               <Text style={styles.errorBannerText}>⚠️ {orderError}</Text>
               <TouchableOpacity
@@ -365,9 +425,10 @@ export default function CheckoutScreen({ navigation }) {
             </View>
           ) : null}
           <PrimaryButton
-            label={t('place_order')}
+            label={!open ? t('closed_title') : belowMin ? t('district_min_short', { short: shortAmount }) : t('place_order')}
             onPress={handleSubmit}
             loading={loading}
+            disabled={!open || belowMin}
             icon={<Text style={{ color: '#fff' }}>✓</Text>}
           />
         </View>
@@ -497,6 +558,54 @@ const styles = StyleSheet.create({
     ...Shadows.glow,
   },
   paymentChipText: { fontWeight: '700', fontSize: 15, color: Colors.textSecondary },
+  closedBanner: {
+    backgroundColor: Colors.primaryLight,
+    borderWidth: 1,
+    borderColor: Colors.primary + '55',
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  closedBannerText: {
+    fontSize: 14,
+    color: Colors.primaryDark,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  districtWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  districtChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.divider,
+  },
+  districtChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primaryDark,
+    ...Shadows.glow,
+  },
+  districtChipText: { fontWeight: '700', fontSize: 13, color: Colors.textSecondary },
+  minBanner: {
+    backgroundColor: '#FFF4E5',
+    borderWidth: 1,
+    borderColor: '#FCD9A8',
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  minBannerText: {
+    fontSize: 14,
+    color: '#B45309',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   errorBanner: {
     backgroundColor: Colors.error + '18',
     borderWidth: 1,

@@ -58,6 +58,8 @@ export const ApiConstants = {
   orderStatus: (id) => `/orders/${id}/status`,
   promotions: '/promotions',
   settings: '/settings/contact',
+  businessHours: '/settings/business-hours',
+  districtMinimums: '/settings/district-minimums',
   notificationsRegisterToken: '/notifications/register-token',
   chatMy: '/chat/my',
   chatMyMessages: '/chat/my/messages',
