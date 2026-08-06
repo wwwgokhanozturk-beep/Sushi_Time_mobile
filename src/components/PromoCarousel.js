@@ -158,7 +158,7 @@ function StoryViewer({ visible, promotions, startIndex, lang, onClose, onMarkSee
 
         {/* ── Background media (image or video) ── */}
         {promo.imageUrl ? (
-          <PromoMedia uri={promo.imageUrl} style={StyleSheet.absoluteFill} muted={false} contentFit="cover" />
+          <PromoMedia uri={promo.imageUrl} mediaType={promo.mediaType} style={StyleSheet.absoluteFill} muted={false} contentFit="cover" />
         ) : (
           <View style={[StyleSheet.absoluteFill, sv.placeholder]}>
             <Text style={{ fontSize: 100 }}>🎉</Text>
@@ -292,7 +292,7 @@ export default function PromoCarousel() {
               <View style={[styles.ring, isSeen && styles.ringSeen]}>
                 <View style={styles.innerWrap}>
                   {item.imageUrl ? (
-                    <PromoMedia uri={item.imageUrl} style={styles.bubbleImg} muted contentFit="cover" />
+                    <PromoMedia uri={item.imageUrl} mediaType={item.mediaType} style={styles.bubbleImg} muted contentFit="cover" />
                   ) : (
                     <View style={styles.bubbleFallback}>
                       <Text style={{ fontSize: 30 }}>🎉</Text>

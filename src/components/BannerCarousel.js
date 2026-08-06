@@ -89,14 +89,21 @@ export default function BannerCarousel() {
         getItemLayout={getItemLayout}
         onMomentumScrollEnd={onMomentumEnd}
         onScrollToIndexFailed={() => {}}
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const { title, desc } = pickLang(item, lang);
           const badgeColor = item.badge ? BADGE_COLORS[item.badge] : null;
           return (
             <View style={styles.slide}>
               <View style={styles.card}>
                 {item.imageUrl ? (
-                  <PromoMedia uri={item.imageUrl} style={StyleSheet.absoluteFill} muted contentFit="cover" />
+                  <PromoMedia
+                    uri={item.imageUrl}
+                    mediaType={item.mediaType}
+                    paused={index !== idx}
+                    style={StyleSheet.absoluteFill}
+                    muted
+                    contentFit="cover"
+                  />
                 ) : (
                   <View style={[StyleSheet.absoluteFill, styles.fallback, { backgroundColor: item.color || Colors.primary }]}>
                     <Text style={{ fontSize: 64 }}>{item.emoji || '🍣'}</Text>
