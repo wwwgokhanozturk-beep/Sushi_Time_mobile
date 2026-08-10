@@ -114,6 +114,7 @@ export function TabNavigator() {
         component={ChatScreen}
         options={{
           tabBarLabel: 'Chat',
+          tabBarHideOnKeyboard: true,
           tabBarIcon: ({ focused, color }) => <TabIcon name="Chat" focused={focused} color={color} />,
         }}
       />
