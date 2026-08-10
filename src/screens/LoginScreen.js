@@ -1,20 +1,9 @@
 import React, { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  ImageBackground,
-} from "react-native";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { Colors, Radius, Spacing } from "../core/theme";
+import { Colors, Spacing } from "../core/theme";
 import { PrimaryButton } from "../components/SharedWidgets";
+import AuthBackground, { AuthInput } from "../components/AuthBackground";
 import { useProfileStore } from "../store/profileStore";
 import httpClient from "../core/httpClient";
 
@@ -26,8 +15,10 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const canSubmit = email.trim() && password.trim();
+
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) return;
+    if (!canSubmit) return;
     setLoading(true);
     try {
       const { data } = await httpClient.post("/users/login", {
@@ -46,177 +37,68 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <AuthBackground
+      title={t("sign_in")}
+      subtitle={t("welcome_back", { defaultValue: "Welcome back 🍣" })}
+      onBack={() => navigation.goBack()}
     >
-      <ImageBackground
-        source={require("../../assets/mountain-bg.png")}
-        style={styles.background}
-        resizeMode="cover"
+      <AuthInput
+        value={email}
+        onChangeText={setEmail}
+        placeholder={t("email_address")}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        returnKeyType="next"
+      />
+
+      <AuthInput
+        value={password}
+        onChangeText={setPassword}
+        placeholder={t("password")}
+        secure
+        returnKeyType="done"
+        onSubmitEditing={handleLogin}
+      />
+
+      <View style={styles.buttonWrap}>
+        <PrimaryButton
+          label={t("sign_in")}
+          onPress={handleLogin}
+          loading={loading}
+          disabled={!canSubmit}
+        />
+      </View>
+
+      <TouchableOpacity
+        style={styles.guestButton}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.7}
       >
-        {/* Red Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButtonArea}
-          >
-            <Text style={styles.backText}>{"‹ " + t("sign_in")}</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.guestText}>{t("continue_as_guest")}</Text>
+      </TouchableOpacity>
 
-        {/* Content */}
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Logo / Title */}
-          <View style={styles.logoSection}>
-            <Text style={styles.appName}>sushi</Text>
-            <Text style={[styles.appName, styles.appNameAccent]}>time</Text>
-          </View>
-
-          {/* Inputs */}
-          <View style={styles.formSection}>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder={t("email_address")}
-              placeholderTextColor={Colors.textPrimary}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="next"
-            />
-
-            <TextInput
-              style={[styles.input, { marginBottom: Spacing.lg }]}
-              value={password}
-              onChangeText={setPassword}
-              placeholder={t("password")}
-              placeholderTextColor={Colors.textPrimary}
-              secureTextEntry
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
-          </View>
-
-          {/* Button */}
-          <View style={styles.buttonWrap}>
-            <PrimaryButton
-              label={loading ? "" : t("sign_in")}
-              onPress={handleLogin}
-              disabled={loading || !email.trim() || !password.trim()}
-              icon={loading ? <ActivityIndicator color="#fff" /> : null}
-            />
-          </View>
-
-          {/* Forgot Password / Guest */}
-          <TouchableOpacity
-            style={styles.guestButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.forgotText}>{t("continue_as_guest")}</Text>
-          </TouchableOpacity>
-
-          {/* Sign Up Link */}
-          <View style={styles.signupSection}>
-            <Text style={styles.linkText}>{t("no_account_yet")} </Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-              <Text style={[styles.linkText, styles.linkAccent]}>
-                {t("create_account")} &gt;
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </ImageBackground>
-    </KeyboardAvoidingView>
+      <View style={styles.linkRow}>
+        <Text style={styles.linkText}>{t("no_account_yet")} </Text>
+        <TouchableOpacity onPress={() => navigation.navigate("Register")} activeOpacity={0.7}>
+          <Text style={[styles.linkText, styles.linkAccent]}>{t("create_account")} ›</Text>
+        </TouchableOpacity>
+      </View>
+    </AuthBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  background: {
-    flex: 1,
-  },
-  header: {
-    backgroundColor: "#EF4444",
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.lg,
-    paddingTop: Platform.OS === "ios" ? Spacing.xl : Spacing.lg,
-  },
-  backButtonArea: {
-    marginLeft: -Spacing.lg,
-  },
-  backText: {
-    color: "#FFF",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.xl,
-  },
-  logoSection: {
-    alignItems: "center",
-    marginBottom: Spacing.xl,
-  },
-  appName: {
-    fontSize: 40,
-    fontWeight: "900",
-    color: Colors.textPrimary,
-    letterSpacing: -1,
-  },
-  appNameAccent: {
-    color: "#EF4444",
-  },
-  formSection: {
-    marginBottom: Spacing.lg,
-  },
-  input: {
-    height: 58,
-    borderRadius: Radius.md,
-    backgroundColor: "#F4F4F4",
-    borderWidth: 1,
-    borderColor: "#BDBDBD",
-    paddingHorizontal: Spacing.lg,
-    fontSize: 16,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.md,
-  },
-  buttonWrap: {
-    width: 250,
-    alignSelf: "center",
-    marginTop: Spacing.md,
-  },
-  guestButton: {
-    marginTop: Spacing.lg,
-    alignItems: "center",
-  },
-  forgotText: {
-    color: Colors.textPrimary,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  signupSection: {
+  buttonWrap: { marginTop: Spacing.sm },
+  guestButton: { marginTop: Spacing.md, alignItems: "center" },
+  guestText: { color: Colors.textSecondary, fontSize: 15, fontWeight: "600" },
+  linkRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     flexWrap: "wrap",
-    marginTop: Spacing.xl,
+    marginTop: Spacing.lg,
   },
-  linkText: {
-    color: Colors.textPrimary,
-    fontSize: 16,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  linkAccent: {
-    color: "#EF4444",
-    fontWeight: "700",
-  },
+  linkText: { color: Colors.textPrimary, fontSize: 15, fontWeight: "600" },
+  linkAccent: { color: Colors.primary, fontWeight: "800" },
 });

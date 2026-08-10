@@ -23,7 +23,12 @@ export function PrimaryButton({ label, onPress, loading, icon, disabled }) {
       ) : (
         <View style={styles.primaryBtnInner}>
           {icon}
-          <Text style={styles.primaryBtnText} numberOfLines={1}>{label}</Text>
+          <Text
+            style={[styles.primaryBtnText, isDisabled && styles.primaryBtnTextDisabled]}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
         </View>
       )}
     </TouchableOpacity>
@@ -136,6 +141,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5,
     flexShrink: 1,
+  },
+  primaryBtnTextDisabled: {
+    color: Colors.textLight,
   },
   emptyContainer: {
     flex: 1,
