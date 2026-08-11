@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Linking,
 } from 'react-native';
 import MapboxMap from '../components/MapboxMap';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +15,7 @@ import { Colors, Typography, Spacing, Radius, Shadows } from '../core/theme';
 import { useOrderStore } from '../store/orderStore';
 import { StatusBadge, ErrorState } from '../components/SharedWidgets';
 import { formatPrice } from '../utils/formatPrice';
+import { useOrderTracking } from '../utils/useOrderTracking';
 import { RESTAURANT_LAT, RESTAURANT_LNG } from '../core/constants';
 
 export default function OrderTrackingScreen({ route, navigation }) {
@@ -22,12 +24,19 @@ export default function OrderTrackingScreen({ route, navigation }) {
   const { orderId } = route.params;
   const { currentOrder, loading, error, loadOrderById } = useOrderStore();
   const pollRef = useRef(null);
+  // Живая позиция курьера + мгновенная смена статуса.
+  const { driverLocation, status: liveStatus } = useOrderTracking(orderId, currentOrder);
 
   useEffect(() => {
     loadOrderById(orderId);
     pollRef.current = setInterval(() => loadOrderById(orderId), 15000);
     return () => clearInterval(pollRef.current);
   }, [orderId]);
+
+  // Статус пришёл по сокету — подтягиваем заказ целиком, не дожидаясь опроса.
+  useEffect(() => {
+    if (liveStatus) loadOrderById(orderId);
+  }, [liveStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading && !currentOrder) {
     return (
@@ -89,6 +98,8 @@ export default function OrderTrackingScreen({ route, navigation }) {
         zoom={14}
         interactive={false}
         style={styles.mapPlaceholder}
+        // Курьера показываем только пока заказ реально едет.
+        driverLocation={order.status === 'en_route' ? driverLocation : null}
         markers={[
           { lat: RESTAURANT_LAT, lng: RESTAURANT_LNG, type: 'restaurant', color: '#E8181B', title: 'Sushi Time' },
           ...(order?.latitude && order?.longitude
@@ -156,6 +167,20 @@ export default function OrderTrackingScreen({ route, navigation }) {
         ) : (
           <View style={styles.cancelledBox}>
             <Text style={styles.cancelledText}>{t('order_cancelled')}</Text>
+          </View>
+        )}
+
+        {/* Courier — появляется, когда заказ выехал */}
+        {order.status === 'en_route' && order.driver?.name && (
+          <View style={styles.driverBox}>
+            <Text style={[Typography.body, { flex: 1, fontWeight: '700' }]}>
+              🛵 {order.driver.name}
+            </Text>
+            {order.driver.phone && (
+              <TouchableOpacity onPress={() => Linking.openURL(`tel:${order.driver.phone}`)}>
+                <Text style={styles.driverCall}>📞 {order.driver.phone}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -228,6 +253,23 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(239, 68, 68, 0.4)',
   },
   cancelledText: { color: Colors.error, fontWeight: '800', textAlign: 'center', fontSize: 16 },
+  driverBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.lg,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    marginTop: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  driverCall: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
   addressBox: {
     flexDirection: 'row',
     alignItems: 'center',

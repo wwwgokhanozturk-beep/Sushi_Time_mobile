@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import httpClient from '../core/httpClient';
 import { ApiConstants } from '../core/api';
+import { saveTrackingToken } from '../utils/tracking';
 
 const ORDER_IDS_KEY = 'sushi_time_order_ids';
 
@@ -37,6 +38,8 @@ export const useOrderStore = create((set) => ({
       const order = res.data?.data?.order;
       set({ loading: false, orderPlaced: order });
       if (order?._id) await saveOrderId(order._id);
+      // Ключ к живому отслеживанию — выдаётся один раз, только здесь.
+      if (order?._id && order?.trackingToken) await saveTrackingToken(order._id, order.trackingToken);
       return order;
     } catch (e) {
       set({
