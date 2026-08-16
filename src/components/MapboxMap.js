@@ -57,9 +57,7 @@ export default function MapboxMap({
     .pin-label { background:#E8181B;color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;
       white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);margin-bottom:3px; }
     .pin-wrap { display:flex;flex-direction:column;align-items:center; }
-    .logo-pin { width:36px;height:36px;border-radius:50%;background:#fff;border:2px solid #E8181B;
-      box-shadow:0 2px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center; }
-    .logo-pin img { width:27px;height:auto;display:block; }
+    .logo-pin img { height:55px;width:auto;display:block;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45)); }
     .user-dot { position:relative;width:18px;height:18px; }
     .user-dot .ring { position:absolute;inset:0;border-radius:50%;background:#E8181B;opacity:.35;animation:pulse 1.8s ease-out infinite; }
     .user-dot .core { position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:#E8181B;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4); }
