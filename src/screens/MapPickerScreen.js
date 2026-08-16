@@ -102,6 +102,7 @@ export default function MapPickerScreen({ navigation, route }) {
           interactive
           onPress={handleMapPress}
           onLocateRequest={handleLocate}
+          locateLabel={t('use_my_location')}
         />
       </View>
 

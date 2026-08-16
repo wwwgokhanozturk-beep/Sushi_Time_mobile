@@ -17,6 +17,8 @@ import { MAPBOX_TOKEN } from '../core/constants';
  *   interactive        — разрешить тап/перемещение (default true)
  *   onPress(lat, lng)  — колбэк при тапе по карте (только если interactive)
  *   onLocateRequest()  — колбэк при нажатии кнопки «моё местоположение» (показывает кнопку)
+ *   locateLabel        — подпись этой кнопки; экран передаёт её переведённой,
+ *                        внутри WebView до i18n не дотянуться
  *   style              — стиль контейнера
  */
 export default function MapboxMap({
@@ -29,6 +31,7 @@ export default function MapboxMap({
   interactive = true,
   onPress,
   onLocateRequest,
+  locateLabel = 'Konum',
   style,
 }) {
   const webRef = useRef(null);
@@ -69,7 +72,7 @@ export default function MapboxMap({
 </head>
 <body>
   <div id="map"></div>
-  ${showLocate ? '<button id="locate"><span class="ic">📍</span><span>Konum</span></button>' : ''}
+  ${showLocate ? `<button id="locate"><span class="ic">📍</span><span>${locateLabel}</span></button>` : ''}
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
   <script>
     mapboxgl.accessToken = '${MAPBOX_TOKEN}';
