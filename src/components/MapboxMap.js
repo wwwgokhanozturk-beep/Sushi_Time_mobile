@@ -1,7 +1,7 @@
 import React, { useRef, useCallback, useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { MAPBOX_TOKEN } from '../core/constants';
+import { MAPBOX_TOKEN, RESTAURANT_LOGO_URL } from '../core/constants';
 
 /**
  * MapboxMap — карта на Mapbox GL JS через WebView (drop-in замена LeafletMap).
@@ -32,6 +32,7 @@ export default function MapboxMap({
   onPress,
   onLocateRequest,
   locateLabel = 'Konum',
+  logoUrl = RESTAURANT_LOGO_URL,
   style,
 }) {
   const webRef = useRef(null);
@@ -56,6 +57,9 @@ export default function MapboxMap({
     .pin-label { background:#E8181B;color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;
       white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);margin-bottom:3px; }
     .pin-wrap { display:flex;flex-direction:column;align-items:center; }
+    .logo-pin { width:72px;height:72px;border-radius:50%;background:#fff;border:3px solid #E8181B;
+      box-shadow:0 4px 14px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center; }
+    .logo-pin img { width:54px;height:auto;display:block; }
     .user-dot { position:relative;width:18px;height:18px; }
     .user-dot .ring { position:absolute;inset:0;border-radius:50%;background:#E8181B;opacity:.35;animation:pulse 1.8s ease-out infinite; }
     .user-dot .core { position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:#E8181B;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4); }
@@ -89,9 +93,17 @@ export default function MapboxMap({
     function makePin(m) {
       var color = m.color || '#E8181B';
       var wrap = document.createElement('div');
+
+      // Ресторан — фирменный логотип на белом круге, как в веб-версии.
+      if (m.type === 'restaurant') {
+        wrap.className = 'logo-pin';
+        wrap.innerHTML = '<img src="${logoUrl}" alt="' + (m.title || '') + '" />';
+        return wrap;
+      }
+
       wrap.className = 'pin-wrap';
       var label = m.title ? '<div class="pin-label" style="background:' + color + '">' +
-        (m.type === 'restaurant' ? '🍣 ' : '') + m.title + '</div>' : '';
+        m.title + '</div>' : '';
       wrap.innerHTML = label + '<div class="pin" style="background:' + color + '"></div>';
       return wrap;
     }
@@ -99,7 +111,8 @@ export default function MapboxMap({
     map.on('load', function () {
       var markers = ${markersJson};
       markers.forEach(function (m) {
-        new mapboxgl.Marker({ element: makePin(m), anchor: 'bottom' })
+        // Круглый значок ресторана центрируем на точке, каплю ставим остриём.
+        new mapboxgl.Marker({ element: makePin(m), anchor: m.type === 'restaurant' ? 'center' : 'bottom' })
           .setLngLat([m.lng, m.lat]).addTo(map);
       });
 
