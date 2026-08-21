@@ -1,0 +1,36 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiZ29raGFub3p0dXJrIiwiYSI6ImNtcWo5ZGR1MjA1aHIycnM2NXBrY2tzOXgifQ.UG6-GZUgxasgruZFB2WMxQ"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiZ29raGFub3p0dXJrIiwiYSI6ImNtcWo5ZGR1MjA1aHIycnM2NXBrY2tzOXgifQ.UG6-GZUgxasgruZFB2WMxQ"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiZ29raGFub3p0dXJrIiwiYSI6ImNtcWo5ZGR1MjA1aHIycnM2NXBrY2tzOXgifQ.UG6-GZUgxasgruZFB2WMxQ"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

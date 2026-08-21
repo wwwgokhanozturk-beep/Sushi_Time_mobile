@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "Sushi Time",
+    "slug": "sushi-time",
+    "scheme": "sushitime",
+    "version": "1.1.6",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash_bg.jpg",
+      "resizeMode": "cover",
+      "backgroundColor": "#1A0B08"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sushitime.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Sushi Time использует геолокацию, чтобы показать ваше положение на карте и рассчитать время доставки.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Sushi Time использует геолокацию, чтобы показать ваше положение на карте и рассчитать время доставки."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.sushitime.app",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#E8272A"
+        }
+      ],
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Sushi Time использует геолокацию, чтобы показать ваше положение на карте и рассчитать время доставки."
+        }
+      ],
+      "expo-video"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "dfb4e1ac-0eef-4966-9f13-ffe80a82c6fc"
+      }
+    },
+    "owner": "umidjon_deevv"
+  }
+}

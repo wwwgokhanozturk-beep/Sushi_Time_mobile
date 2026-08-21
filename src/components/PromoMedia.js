@@ -1,0 +1,147 @@
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import CachedImage from './CachedImage';
+import MediaSkeleton from './MediaSkeleton';
+
+// A promotion's media lives in `imageUrl`; it may actually be a video. The native
+// <Image> only renders a torn, half-decoded frame on iOS and nothing on Android,
+// so video URLs must be played with expo-video instead. Shared by the stories
+// carousel and the hero banner so both surfaces play video identically to the website.
+const VIDEO_URL_RE = /\.(mp4|m4v|mov|webm|m3u8|3gp|mkv)(\?.*)?$/i;
+const isVideoUrl = (url) => typeof url === 'string' && VIDEO_URL_RE.test(url);
+
+// Media uploaded through UploadThing is served from an opaque, extensionless URL
+// (…/f/<id>), so the regex above classifies every video as an image. The server
+// resolves the real type into `mediaType`, but records saved before that existed
+// arrive without it — probe the Content-Type once per URL and reuse the answer.
+// Кеш переживает перемонтирование карусели, поэтому HEAD-запрос уходит
+// максимум один раз за запуск приложения, а не на каждый показ слайда.
+const probeCache = new Map(); // uri -> 'video' | 'image'
+
+// Баннер и «сторис» — не кинотеатр: полноэкранный режим не нужен.
+// Объектная форма пришла на смену `allowsFullscreen`, который expo-video
+// в SDK 54 помечает как устаревший (предупреждение на каждый кадр видео).
+const NO_FULLSCREEN = { enable: false };
+const probeInFlight = new Map(); // uri -> Promise<'video'|'image'>
+
+function probeKind(uri) {
+  if (probeCache.has(uri)) return Promise.resolve(probeCache.get(uri));
+  if (probeInFlight.has(uri)) return probeInFlight.get(uri);
+  const p = fetch(uri, { method: 'HEAD' })
+    .then((r) => ((r.headers.get('content-type') || '').startsWith('video/') ? 'video' : 'image'))
+    .catch(() => 'image') // unreachable → assume image, <Image> degrades quietly
+    .then((resolved) => {
+      probeCache.set(uri, resolved);
+      probeInFlight.delete(uri);
+      return resolved;
+    });
+  probeInFlight.set(uri, p);
+  return p;
+}
+
+function useMediaKind(uri, mediaType) {
+  const known =
+    mediaType === 'video' || mediaType === 'image'
+      ? mediaType
+      : isVideoUrl(uri)
+      ? 'video'
+      : probeCache.get(uri);
+
+  const [kind, setKind] = useState(known);
+
+  useEffect(() => {
+    if (known) { setKind(known); return undefined; }
+    if (!uri) { setKind('image'); return undefined; }
+
+    let cancelled = false;
+    probeKind(uri).then((resolved) => { if (!cancelled) setKind(resolved); });
+    return () => { cancelled = true; };
+  }, [uri, known]);
+
+  return kind; // undefined only while a probe is still in flight
+}
+
+// Plays a promo video. `muted` story = full sound; bubble/banner preview = silent loop.
+function PromoVideo({ uri, style, muted = false, contentFit = 'cover', paused = false }) {
+  // `useCaching` кладёт файл в кеш expo-video: первый показ грузится из сети,
+  // все следующие — с диска, поэтому белого экрана при повторе больше нет.
+  const player = useVideoPlayer({ uri, useCaching: true }, (p) => {
+    p.loop = true;
+    p.muted = muted;
+  });
+
+  // Пока плеер не набрал данных, показываем скелет: раньше на этом месте
+  // была пустая белая область — она и выглядела как «зависло».
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!player) return undefined;
+    setReady(player.status === 'readyToPlay');
+    const sub = player.addListener('statusChange', ({ status }) => {
+      setReady(status === 'readyToPlay');
+    });
+    return () => sub?.remove?.();
+  }, [player]);
+
+  useEffect(() => {
+    if (!player) return;
+    // Only the slide actually on screen plays. Several decoders running at once
+    // exhausts the phone's hardware video pipeline, which is what makes frames
+    // tear/band instead of simply dropping.
+    if (paused) player.pause();
+    else player.play();
+  }, [player, paused]);
+
+  return (
+    // Обёртка нужна, чтобы поверх видео лечь скелету; overflow скругляет
+    // видео по радиусу контейнера (кружок «сторис», карточка баннера).
+    <View style={[style, styles.clip]}>
+      <VideoView
+        style={StyleSheet.absoluteFill}
+        player={player}
+        contentFit={contentFit}
+        nativeControls={false}
+        fullscreenOptions={NO_FULLSCREEN}
+        pointerEvents="none"
+      />
+      {!ready && <MediaSkeleton style={StyleSheet.absoluteFill} radius={0} />}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  clip: { overflow: 'hidden' },
+});
+
+// Picks a video player or an <Image> based on the media's real type.
+export function PromoMedia({
+  uri, style, muted, contentFit = 'cover', mediaType, paused = false, posterUrl,
+}) {
+  const kind = useMediaKind(uri, mediaType);
+
+  // Hold a branded skeleton until the type is known — handing an MP4 to <Image> is
+  // exactly what renders the corrupted, striped frame this guards against.
+  if (!kind) return <MediaSkeleton style={style} radius={0} />;
+
+  if (kind === 'video') {
+    return (
+      <PromoVideo
+        key={uri}
+        uri={uri}
+        style={style}
+        muted={muted}
+        contentFit={contentFit}
+        paused={paused}
+      />
+    );
+  }
+  return (
+    <CachedImage
+      uri={posterUrl || uri}
+      style={style}
+      contentFit={contentFit}
+      priority="high"
+    />
+  );
+}
