@@ -29,3 +29,6 @@ yarn-error.*
 dist/
 .expo/
 web-build/
+
+# Backend repo klonlangan shu papka ichiga — mobil repoga tushmasin
+Sushi_Time-backend/

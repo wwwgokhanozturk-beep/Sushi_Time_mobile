@@ -3,8 +3,15 @@
     "name": "Sushi Time",
     "slug": "sushi-time",
     "scheme": "sushitime",
-    "version": "1.1.6",
+    "version": "1.1.7",
     "orientation": "portrait",
+    "runtimeVersion": { "policy": "appVersion" },
+    "updates": {
+      "url": "https://u.expo.dev/dfb4e1ac-0eef-4966-9f13-ffe80a82c6fc",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,

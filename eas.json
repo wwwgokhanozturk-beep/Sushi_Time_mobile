@@ -9,7 +9,8 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiZ29raGFub3p0dXJrIiwiYSI6ImNtcWo5ZGR1MjA1aHIycnM2NXBrY2tzOXgifQ.UG6-GZUgxasgruZFB2WMxQ"
-      }
+      },
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
@@ -18,7 +19,8 @@
       },
       "env": {
         "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiZ29raGFub3p0dXJrIiwiYSI6ImNtcWo5ZGR1MjA1aHIycnM2NXBrY2tzOXgifQ.UG6-GZUgxasgruZFB2WMxQ"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "autoIncrement": true,
@@ -27,7 +29,8 @@
       },
       "env": {
         "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiZ29raGFub3p0dXJrIiwiYSI6ImNtcWo5ZGR1MjA1aHIycnM2NXBrY2tzOXgifQ.UG6-GZUgxasgruZFB2WMxQ"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {

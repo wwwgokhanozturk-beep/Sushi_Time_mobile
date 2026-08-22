@@ -3,7 +3,6 @@ import {
   View,
   Text,
   Animated,
-  Platform,
   TouchableOpacity,
   RefreshControl,
   StyleSheet,
@@ -20,6 +19,7 @@ import BannerCarousel from '../components/BannerCarousel';
 import DeliveryMinBanner from '../components/DeliveryMinBanner';
 import AppHeader from '../components/AppHeader';
 import CategoryRail, { buildCategoryEntries, RAIL_HEIGHT } from '../components/CategoryRail';
+import { safeScroll } from '../utils/safeScroll';
 
 const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
@@ -173,7 +173,11 @@ export default function HomeScreen({ navigation }) {
       setActiveCat(cat);
       isClickScrollingRef.current = true;
       // viewOffset поднимает заголовок ровно под прилипший рейл.
-      listRef.current?.scrollToIndex({ index, animated: true, viewOffset: RAIL_HEIGHT });
+      // Отказ прокрутки глушим: после смены языка строки пересобираются, и
+      // Invariant отсюда в release-сборке закрывает приложение целиком.
+      safeScroll(() =>
+        listRef.current?.scrollToIndex({ index, animated: true, viewOffset: RAIL_HEIGHT })
+      );
       clearTimeout(clickTimeoutRef.current);
       clickTimeoutRef.current = setTimeout(() => {
         isClickScrollingRef.current = false;
@@ -291,9 +295,11 @@ export default function HomeScreen({ navigation }) {
         initialNumToRender={8}
         maxToRenderPerBatch={8}
         windowSize={7}
-        // На iOS этот флаг иногда «съедает» строки при быстром скролле,
-        // поэтому включаем его только там, где он реально помогает.
-        removeClippedSubviews={Platform.OS === 'android'}
+        // removeClippedSubviews здесь включать нельзя. В шапке списка живёт
+        // баннер с expo-video: на Android флаг отцепляет нативный VideoView от
+        // родителя, пока плеер ещё жив, и приложение падает без JS-ошибки —
+        // просто закрывается. Строки списка фиксированной высоты, поэтому
+        // виртуализации (windowSize) для плавности хватает и без него.
         onScrollToIndexFailed={() => {}}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />

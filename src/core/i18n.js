@@ -171,6 +171,15 @@ const en = {
   closed_today_off: 'Closed today',
   closed_order_blocked: "We're closed right now — ordering is unavailable.",
   view_menu: 'View menu',
+
+  // Обновление приложения
+  update_title: 'Update available',
+  update_required_title: 'Update required',
+  update_body: 'A new version of Sushi Time is ready — with the latest menu and fixes.',
+  update_required_body: 'This version is no longer supported. Please update to keep ordering.',
+  update_your_version: 'Your version',
+  update_now: 'Update',
+  update_later: 'Later',
 };
 
 const ru = {
@@ -342,6 +351,15 @@ const ru = {
   closed_today_off: 'Сегодня выходной',
   closed_order_blocked: 'Сейчас мы закрыты — заказ недоступен.',
   view_menu: 'Посмотреть меню',
+
+  // Обновление приложения
+  update_title: 'Доступно обновление',
+  update_required_title: 'Требуется обновление',
+  update_body: 'Вышла новая версия Суши Тайм — со свежим меню и исправлениями.',
+  update_required_body: 'Эта версия больше не поддерживается. Обновитесь, чтобы продолжить заказывать.',
+  update_your_version: 'Ваша версия',
+  update_now: 'Обновить',
+  update_later: 'Позже',
 };
 
 const tr = {
@@ -513,6 +531,15 @@ const tr = {
   closed_today_off: 'Bugün kapalıyız',
   closed_order_blocked: 'Şu anda kapalıyız — sipariş alınamıyor.',
   view_menu: 'Menüye göz at',
+
+  // Uygulama güncellemesi
+  update_title: 'Güncelleme mevcut',
+  update_required_title: 'Güncelleme gerekli',
+  update_body: "Suşi Zamanı'nın yeni sürümü hazır — güncel menü ve iyileştirmelerle.",
+  update_required_body: 'Bu sürüm artık desteklenmiyor. Sipariş vermeye devam etmek için güncelleyin.',
+  update_your_version: 'Sürümünüz',
+  update_now: 'Güncelle',
+  update_later: 'Daha sonra',
 };
 
 const STORAGE_KEY = 'sushi_time_language';

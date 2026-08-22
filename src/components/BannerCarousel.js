@@ -7,11 +7,13 @@ import {
   Dimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useIsFocused } from '@react-navigation/native';
 import { Colors, Spacing, Radius, Shadows } from '../core/theme';
 import { usePromotionStore } from '../store/promotionStore';
 import { PromoMedia } from './PromoMedia';
 import MediaSkeleton from './MediaSkeleton';
 import { pickLocalized } from '../utils/localized';
+import { safeScroll } from '../utils/safeScroll';
 
 const { width: SW } = Dimensions.get('window');
 const SLIDE_W = SW;                    // full-width page → clean paging snap
@@ -46,6 +48,11 @@ function BannerCarousel() {
   const { promotions, loading, loadPromotions, hydrate } = usePromotionStore();
   const listRef = useRef(null);
   const [idx, setIdx] = useState(0);
+  // Home живёт во вкладке и остаётся смонтированным, когда пользователь ушёл
+  // в «Меню». Работающий за кадром видеодекодер — дефицитный ресурс Android:
+  // пока он занят, тяжёлый список меню отрисовывается на грани, и система
+  // вправе убить процесс. Вне фокуса плеер ставим на паузу.
+  const isFocused = useIsFocused();
 
   useEffect(() => {
     // Сначала поднимаем сохранённые акции (мгновенно), потом освежаем из сети.
@@ -60,14 +67,20 @@ function BannerCarousel() {
   const showSkeleton = loading && !promotions.length;
 
   // Auto-advance, looping back to the first slide.
+  //
+  // Прокрутка вынесена из setState-апдейтера: там она выполнялась лишним разом
+  // и могла обратиться к индексу, которого в данных списка уже нет (акции
+  // приходят с сервера асинхронно). Исключение из таймера некому поймать —
+  // в release-сборке оно закрывает приложение.
+  const idxRef = useRef(0);
+  idxRef.current = idx;
+
   useEffect(() => {
     if (count <= 1) return undefined;
     const id = setInterval(() => {
-      setIdx((prev) => {
-        const next = (prev + 1) % count;
-        listRef.current?.scrollToIndex({ index: next, animated: true });
-        return next;
-      });
+      const next = (idxRef.current + 1) % count;
+      setIdx(next);
+      safeScroll(() => listRef.current?.scrollToIndex({ index: next, animated: true }));
     }, AUTOPLAY_MS);
     return () => clearInterval(id);
   }, [count]);
@@ -119,7 +132,7 @@ function BannerCarousel() {
                     uri={item.imageUrl}
                     posterUrl={item.posterUrl}
                     mediaType={item.mediaType}
-                    paused={index !== idx}
+                    paused={index !== idx || !isFocused}
                     style={StyleSheet.absoluteFill}
                     muted
                     contentFit="cover"

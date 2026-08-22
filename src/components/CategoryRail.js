@@ -2,6 +2,7 @@ import React, { useEffect, useRef, memo } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Radius, Spacing, Shadows } from '../core/theme';
 import CachedImage from './CachedImage';
+import { deferSafeScroll } from '../utils/safeScroll';
 
 // Круглая витрина категорий (как на сайте): фото + подпись капсом,
 // активная обведена красным кольцом.
@@ -60,11 +61,17 @@ function CategoryRail({ entries, activeKey, onSelect }) {
 
   // Активная категория всегда остаётся на виду — при скролле списка вниз
   // рейл подкручивается сам.
+  //
+  // `entries` пересоздаётся при смене языка (подписи переведены заново), и
+  // прокрутка в тот же тик приходится на список, который ещё не пересчитал
+  // кадры. Поэтому — следующий кадр и подавление отказа: иначе Invariant из
+  // эффекта уносит всё приложение (см. utils/safeScroll).
   useEffect(() => {
     const idx = entries.findIndex((e) => e.key === activeKey);
-    if (idx >= 0) {
-      listRef.current?.scrollToIndex({ index: idx, viewPosition: 0.5, animated: true });
-    }
+    if (idx < 0) return undefined;
+    return deferSafeScroll(() =>
+      listRef.current?.scrollToIndex({ index: idx, viewPosition: 0.5, animated: true })
+    );
   }, [activeKey, entries]);
 
   if (entries.length < 2) return null;

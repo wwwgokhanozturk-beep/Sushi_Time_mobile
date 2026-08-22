@@ -19,6 +19,7 @@ import { groupByCategory } from '../utils/menuGrouping';
 import AppHeader from '../components/AppHeader';
 import CategoryRail, { buildCategoryEntries } from '../components/CategoryRail';
 import { filterItems } from '../utils/searchItems';
+import { safeScroll } from '../utils/safeScroll';
 
 // Фиксированная высота заголовка секции — вместе с фиксированной высотой
 // карточки даёт точный getItemLayout, поэтому переход к любой категории
@@ -141,12 +142,17 @@ export default function MenuScreen({ navigation, route }) {
       isClickScrollingRef.current = true;
       // itemIndex: 0 указывает на сам заголовок секции — рейл здесь не
       // перекрывает список, поэтому дополнительный сдвиг не нужен.
-      sectionListRef.current?.scrollToLocation({
-        sectionIndex,
-        itemIndex: 0,
-        viewOffset: 0,
-        animated: true,
-      });
+      // scrollToLocation бросает Invariant, если секции пересобрались прямо
+      // перед нажатием (например, только что сменили язык) — гасим отказ,
+      // иначе в release-сборке это закрывает приложение.
+      safeScroll(() =>
+        sectionListRef.current?.scrollToLocation({
+          sectionIndex,
+          itemIndex: 0,
+          viewOffset: 0,
+          animated: true,
+        })
+      );
       clearTimeout(clickScrollTimeoutRef.current);
       clickScrollTimeoutRef.current = setTimeout(() => {
         isClickScrollingRef.current = false;
