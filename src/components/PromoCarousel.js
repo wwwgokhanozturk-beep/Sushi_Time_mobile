@@ -16,8 +16,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Spacing, Radius } from '../core/theme';
 import { usePromotionStore } from '../store/promotionStore';
 import { PromoMedia } from './PromoMedia';
+import { slideDurationMs } from '../utils/promo';
 
 const { width: SW, height: SH } = Dimensions.get('window');
+// Default when a promotion has no duration of its own.
 const STORY_DURATION = 5000;
 const BUBBLE = 72;
 
@@ -97,7 +99,10 @@ function StoryViewer({ visible, promotions, startIndex, lang, onClose, onMarkSee
 
   const startAnim = (from = 0) => {
     progress.setValue(from);
-    const duration = STORY_DURATION * (1 - from);
+    // This story's own duration, so the progress bar tracks how long the slide
+    // actually stays up rather than a fixed guess.
+    const total = slideDurationMs(promotions[idx], STORY_DURATION);
+    const duration = total * (1 - from);
     animRef.current = Animated.timing(progress, {
       toValue: 1,
       duration,

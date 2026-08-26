@@ -10,10 +10,12 @@ import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, Radius, Shadows } from '../core/theme';
 import { usePromotionStore } from '../store/promotionStore';
 import { PromoMedia } from './PromoMedia';
+import { slideDurationMs } from '../utils/promo';
 
 const { width: SW } = Dimensions.get('window');
 const SLIDE_W = SW;                    // full-width page → clean paging snap
 const CARD_H = Math.round(SW * 0.52);  // hero height (~3:1.9 on a phone)
+// Default when a promotion has no duration of its own.
 const AUTOPLAY_MS = 6000;
 
 const BADGE_COLORS = {
@@ -55,18 +57,20 @@ export default function BannerCarousel() {
   const slides = promotions.length ? promotions : FALLBACK;
   const count = slides.length;
 
-  // Auto-advance, looping back to the first slide.
+  // Auto-advance, looping back to the first slide. A timeout per slide rather
+  // than one fixed interval, because each promotion carries its own duration
+  // (and a manual swipe now restarts the wait instead of inheriting whatever
+  // was left of a shared tick).
+  const currentDuration = slideDurationMs(slides[idx], AUTOPLAY_MS);
   useEffect(() => {
     if (count <= 1) return undefined;
-    const id = setInterval(() => {
-      setIdx((prev) => {
-        const next = (prev + 1) % count;
-        listRef.current?.scrollToIndex({ index: next, animated: true });
-        return next;
-      });
-    }, AUTOPLAY_MS);
-    return () => clearInterval(id);
-  }, [count]);
+    const id = setTimeout(() => {
+      const next = (idx + 1) % count;
+      listRef.current?.scrollToIndex({ index: next, animated: true });
+      setIdx(next);
+    }, currentDuration);
+    return () => clearTimeout(id);
+  }, [idx, count, currentDuration]);
 
   const onMomentumEnd = useCallback((e) => {
     const i = Math.round(e.nativeEvent.contentOffset.x / SLIDE_W);
