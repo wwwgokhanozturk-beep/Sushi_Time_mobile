@@ -58,6 +58,11 @@ export const ApiConstants = {
   orderStatus: (id) => `/orders/${id}/status`,
   promotions: '/promotions',
   settings: '/settings/contact',
+  categoryOrder: '/settings/category-order',
+  // Обложка и подпись каждой категории, заданные админом. Эти же два
+  // справочника читает сайт — из них и берётся общий вид витрины.
+  categoryImages: '/settings/category-images',
+  categoryNames: '/settings/category-names',
   appVersion: '/settings/app-version',
   businessHours: '/settings/business-hours',
   districtMinimums: '/settings/district-minimums',

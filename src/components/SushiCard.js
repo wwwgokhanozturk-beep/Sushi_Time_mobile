@@ -100,6 +100,9 @@ function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
   const { i18n } = useTranslation();
   const price = formatPrice(item.price);
 
+  // Название тоже переводится — как на сайте. Раньше бралось сырое `item.name`,
+  // и в русской версии рядом с переведённым составом стояло турецкое название.
+  const name = pickLocalized(item, 'name', i18n.language);
   const description = pickLocalized(item, 'description', i18n.language);
 
   const pseudoRating = item.rating || (3.5 + ((item.price * 7 + item.calories) % 15) / 10);
@@ -113,7 +116,7 @@ function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
 
         {/* LEFT — текст */}
         <View style={styles.listContent}>
-          <Text style={styles.listName} numberOfLines={2}>{item.name}</Text>
+          <Text style={styles.listName} numberOfLines={2}>{name}</Text>
 
           {/* Цена + зачёркнутая */}
           <View style={styles.listPriceRow}>
@@ -137,6 +140,11 @@ function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
                 uri={item.imageUrl}
                 style={[styles.listImage, { transform: imageFrameTransform(item, 116, 116) }]}
                 contentFit="cover"
+                // Список из 50+ карточек: memory-кеш expo-image
+                // разбухает до сотен МБ и роняет Android по OOM.
+                // Держим фото только на диске — декодированный bitmap
+                // живёт лишь пока строка на экране.
+                cachePolicy="disk"
               />
             ) : (
               <View style={[styles.listImage, styles.listPlaceholder]}>
@@ -205,7 +213,7 @@ function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
       </View>
 
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.name} numberOfLines={1}>{name}</Text>
         <StarRating rating={pseudoRating} />
         {description ? (
           <Text style={styles.description} numberOfLines={2}>{description}</Text>

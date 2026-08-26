@@ -8,7 +8,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Colors, Spacing, Radius } from '../core/theme';
+import { Colors, Spacing, Radius, Shadows } from '../core/theme';
 import { useMenuStore } from '../store/menuStore';
 import { useCartStore, selectTotalItems } from '../store/cartStore';
 import { ErrorState, SkeletonMenuList } from '../components/SharedWidgets';
@@ -19,9 +19,9 @@ import BannerCarousel from '../components/BannerCarousel';
 import DeliveryMinBanner from '../components/DeliveryMinBanner';
 import AppHeader from '../components/AppHeader';
 import CategoryRail, { buildCategoryEntries, RAIL_HEIGHT } from '../components/CategoryRail';
+import { categoryLabel } from '../utils/categories';
 import { safeScroll } from '../utils/safeScroll';
 
-const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 // Высота заголовка секции зафиксирована — вместе с фиксированной высотой
 // карточки это даёт точный getItemLayout для всего списка.
@@ -32,8 +32,9 @@ const SECTION_H = 52;
 const HEADER_H_GUESS = 520;
 
 export default function HomeScreen({ navigation }) {
-  const { t } = useTranslation();
-  const { items, loading, error, loadMenu, hydrate, categoryOrder, categoryImages } = useMenuStore();
+  const { t, i18n } = useTranslation();
+  const { items, loading, error, loadMenu, hydrate, categoryOrder, categoryImages, categoryNames } =
+    useMenuStore();
   const addToCart = useCartStore((s) => s.addToCart);
   const totalItems = useCartStore(selectTotalItems);
   const [refreshing, setRefreshing] = useState(false);
@@ -65,9 +66,11 @@ export default function HomeScreen({ navigation }) {
     [items, categoryOrder]
   );
 
+  // Подпись раздела берём из справочника админки, как это делает сайт;
+  // зашитый перевод остаётся запасным вариантом (см. utils/categories).
   const catTitle = useCallback(
-    (cat) => t(`cat_${cat.toLowerCase()}`, { defaultValue: capitalize(cat) }),
-    [t]
+    (cat) => categoryLabel(cat, categoryNames, i18n.language, t),
+    [categoryNames, i18n.language, t]
   );
 
   const sectionCats = useMemo(() => grouped.map(([cat]) => cat), [grouped]);
@@ -226,19 +229,23 @@ export default function HomeScreen({ navigation }) {
       }}>
         <BannerCarousel />
 
-        {/* ─── Delivery info strip ─── */}
+        {/* ─── Delivery info strip ───
+            Одна карточка с разделителями, как на сайте: три отдельные плашки
+            выглядели как три кнопки, хотя нажать нельзя ни одну. */}
         <View style={styles.infoStrip}>
-          <View style={[styles.infoChip, styles.infoChipWide]}>
-            <Text style={{ fontSize: 16 }}>🚚</Text>
-            <Text style={styles.infoChipText} numberOfLines={2}>{t('free_delivery')}</Text>
+          <View style={[styles.infoItem, styles.infoItemWide]}>
+            <Text style={styles.infoIcon}>🚚</Text>
+            <Text style={styles.infoText} numberOfLines={2}>{t('free_delivery')}</Text>
           </View>
-          <View style={styles.infoChip}>
-            <Text style={{ fontSize: 16 }}>⏱</Text>
-            <Text style={styles.infoChipText} numberOfLines={2}>25-35 {t('min_label')}</Text>
+          <View style={styles.infoDivider} />
+          <View style={styles.infoItem}>
+            <Text style={styles.infoIcon}>⏱</Text>
+            <Text style={styles.infoText} numberOfLines={2}>25-35 {t('min_label')}</Text>
           </View>
-          <View style={[styles.infoChip, styles.infoChipNarrow]}>
-            <Text style={{ fontSize: 16 }}>⭐</Text>
-            <Text style={styles.infoChipText}>4.9</Text>
+          <View style={styles.infoDivider} />
+          <View style={[styles.infoItem, styles.infoItemNarrow]}>
+            <Text style={styles.infoIcon}>⭐</Text>
+            <Text style={styles.infoText}>4.9</Text>
           </View>
         </View>
 
@@ -295,11 +302,11 @@ export default function HomeScreen({ navigation }) {
         initialNumToRender={8}
         maxToRenderPerBatch={8}
         windowSize={7}
-        // removeClippedSubviews здесь включать нельзя. В шапке списка живёт
-        // баннер с expo-video: на Android флаг отцепляет нативный VideoView от
-        // родителя, пока плеер ещё жив, и приложение падает без JS-ошибки —
-        // просто закрывается. Строки списка фиксированной высоты, поэтому
-        // виртуализации (windowSize) для плавности хватает и без него.
+        // На Android FlatList по умолчанию включает removeClippedSubviews:
+        // это отцепляет от родителя нативный VideoView баннера, пока плеер
+        // ещё жив, и Android закрывает приложение без единой JS-ошибки.
+        // Явно выключаем — виртуализации через windowSize достаточно.
+        removeClippedSubviews={false}
         onScrollToIndexFailed={() => {}}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
@@ -331,37 +338,52 @@ const styles = StyleSheet.create({
   },
 
   // ── Info strip ──
+  // На сайте это одна белая карточка с тонкими разделителями, а не три плашки.
+  // Ширина и поля совпадают с баннером над ней, поэтому левый и правый край
+  // всей шапки идут одной линией.
   infoStrip: {
     flexDirection: 'row',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.sm,
+    alignItems: 'stretch',
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+    minHeight: 58,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.divider,
+    ...Shadows.sm,
   },
   // Три равные доли не подходят: «Ücretsiz teslimat» и «Бесплатная доставка»
   // длиннее рейтинга в разы. Доли распределены по длине текста (как на сайте),
   // а сам текст может встать в две строки — на русском одной строки не хватает
   // даже широкой доле, а обрезать «Бесплатная доста…» нельзя.
-  infoChip: {
+  infoItem: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56,
     paddingVertical: Spacing.sm,
     paddingHorizontal: 6,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.divider,
-    gap: 8,
+    gap: 7,
   },
-  infoChipWide: {
+  infoItemWide: {
     flex: 1.35,
   },
-  infoChipNarrow: {
-    flex: 0.7,
+  infoItemNarrow: {
+    flex: 0.66,
   },
-  infoChipText: {
+  // Разделитель не доходит до краёв карточки — так он читается как черта
+  // между колонками, а не как граница ещё одной плашки.
+  infoDivider: {
+    width: 1,
+    marginVertical: 12,
+    backgroundColor: Colors.divider,
+  },
+  infoIcon: {
+    fontSize: 16,
+  },
+  infoText: {
     fontSize: 12.5,
     lineHeight: 15,
     fontWeight: '800',

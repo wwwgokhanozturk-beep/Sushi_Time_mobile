@@ -17,8 +17,22 @@ import { safeScroll } from '../utils/safeScroll';
 
 const { width: SW } = Dimensions.get('window');
 const SLIDE_W = SW;                    // full-width page → clean paging snap
-const CARD_H = Math.round(SW * 0.52);  // hero height (~3:1.9 on a phone)
-const AUTOPLAY_MS = 6000;
+
+// Пропорция карточки снята с sushitimetr.com: при ширине окна 591 баннер
+// занимает 535×310, то есть 1.726:1.
+//
+// Раньше высота считалась от ширины ЭКРАНА (SW * 0.52) и не учитывала боковые
+// поля — карточка выходила площе сайта, и баннер на телефоне читался мельче.
+// Считаем от ширины самой карточки: тогда пропорция одна и та же на web, iOS
+// и Android при любой ширине экрана, а не «примерно похожая».
+const H_MARGIN = Spacing.md;
+const CARD_W = SW - H_MARGIN * 2;
+const CARD_ASPECT = 535 / 310;
+const CARD_H = Math.round(CARD_W / CARD_ASPECT);
+
+// Сколько держится один слайд. Значение приходит с сервера (админ задаёт его
+// в панели), это — запасное на случай, если настройка ещё не сохранена.
+const DEFAULT_AUTOPLAY_MS = 6000;
 
 const BADGE_COLORS = {
   HOT: '#EF4444',
@@ -34,6 +48,20 @@ const FALLBACK = [
   { _id: '__b2', title: 'Бесплатная доставка', description: 'При заказе от 25 — доставим бесплатно по городу', badge: 'HOT', color: '#FF6B35', emoji: '🚚' },
   { _id: '__b3', title: 'Скидка на сет', description: 'Закажи сет и получи фирменный ролл бесплатно', badge: 'SALE', discountPercent: 20, color: '#8B5CF6', emoji: '🎁' },
 ];
+
+// Длительность показа слайда. Админ задаёт её в секундах у каждой акции;
+// значение вне разумных границ (или пустое) игнорируем — иначе опечатка вроде
+// «0» или «3600» превращает карусель в мигалку или вешает её навсегда.
+const MIN_SLIDE_SEC = 2;
+const MAX_SLIDE_SEC = 60;
+
+function slideDurationMs(slide) {
+  const sec = Number(slide?.durationSec);
+  if (!Number.isFinite(sec) || sec < MIN_SLIDE_SEC || sec > MAX_SLIDE_SEC) {
+    return DEFAULT_AUTOPLAY_MS;
+  }
+  return Math.round(sec * 1000);
+}
 
 function pickLang(promo, lang) {
   return {
@@ -68,22 +96,32 @@ function BannerCarousel() {
 
   // Auto-advance, looping back to the first slide.
   //
-  // Прокрутка вынесена из setState-апдейтера: там она выполнялась лишним разом
-  // и могла обратиться к индексу, которого в данных списка уже нет (акции
-  // приходят с сервера асинхронно). Исключение из таймера некому поймать —
-  // в release-сборке оно закрывает приложение.
-  const idxRef = useRef(0);
-  idxRef.current = idx;
+  // Сколько висит именно этот слайд. Раньше интервал был один на всю карусель:
+  // пятисекундный ролик и пятнадцатисекундный получали одинаковые 6 секунд —
+  // первый успевал зациклиться, второй обрывался на середине. Теперь длительность
+  // задаёт админ у каждой акции (`durationSec`), а константа остаётся запасной.
+  const slideMs = slideDurationMs(slides[idx]);
 
+  // Таймер — одноразовый setTimeout, который перевзводится при смене слайда:
+  // интервал не умеет менять шаг под каждую акцию.
+  //
+  // `isFocused` в зависимостях — не косметика. Home живёт во вкладке и остаётся
+  // смонтированным, когда пользователь ушёл в «Меню» или «Профиль». Раньше
+  // таймер продолжал крутить слайды в фоне: `idx` смещался каждые 6 секунд,
+  // вместе с ним ехало окно живых слайдов, и плееры пересоздавались бесконечно.
+  // Каждый ExoPlayer — это буферы в Java-куче и декодер в графической памяти,
+  // поэтому приложение постоянно пилило 110↔255 МБ при лимите кучи 256 МБ.
+  // Достаточно было проскроллить меню, чтобы добрать недостающее — и процесс
+  // падал с OutOfMemoryError в случайном потоке.
   useEffect(() => {
-    if (count <= 1) return undefined;
-    const id = setInterval(() => {
-      const next = (idxRef.current + 1) % count;
+    if (count <= 1 || !isFocused) return undefined;
+    const id = setTimeout(() => {
+      const next = (idx + 1) % count;
       setIdx(next);
       safeScroll(() => listRef.current?.scrollToIndex({ index: next, animated: true }));
-    }, AUTOPLAY_MS);
-    return () => clearInterval(id);
-  }, [count]);
+    }, slideMs);
+    return () => clearTimeout(id);
+  }, [count, isFocused, idx, slideMs]);
 
   const onMomentumEnd = useCallback((e) => {
     const i = Math.round(e.nativeEvent.contentOffset.x / SLIDE_W);
@@ -114,25 +152,31 @@ function BannerCarousel() {
         getItemLayout={getItemLayout}
         onMomentumScrollEnd={onMomentumEnd}
         onScrollToIndexFailed={() => {}}
+        // На Android FlatList по умолчанию включает removeClippedSubviews.
+        // Внутри слайдов живёт expo-video: отцепление живого VideoView от
+        // родителя роняет процесс без JS-ошибки. Явно выключаем.
+        removeClippedSubviews={false}
         renderItem={({ item, index }) => {
           const { title, desc } = pickLang(item, lang);
           const badgeColor = item.badge ? BADGE_COLORS[item.badge] : null;
-          // Видеодекодер выделяется на КАЖДЫЙ смонтированный плеер, поэтому
-          // держим живыми только текущий слайд и двух соседей: остальные
-          // показывают скелет и не занимают железо.
-          const near = Math.min(
-            Math.abs(index - idx),
-            count - Math.abs(index - idx)
-          ) <= 1;
+          // Видеодекодер выделяется на КАЖДЫЙ смонтированный плеер, а `paused`
+          // его не освобождает: остановленный ExoPlayer продолжает держать
+          // буферы. Поэтому живым делаем ровно один слайд — тот, что на экране,
+          // и только пока вкладка в фокусе. Соседи показывают скелет.
+          //
+          // Раньше здесь было окно ±1 (три плеера разом). Втроём они держали
+          // кучу у самого потолка, и любое лишнее выделение памяти — скролл
+          // меню, смена языка — роняло процесс.
+          const live = isFocused && index === idx;
           return (
             <View style={styles.slide}>
               <View style={styles.card}>
-                {item.imageUrl && near ? (
+                {item.imageUrl && live ? (
                   <PromoMedia
                     uri={item.imageUrl}
                     posterUrl={item.posterUrl}
                     mediaType={item.mediaType}
-                    paused={index !== idx || !isFocused}
+                    paused={false}
                     style={StyleSheet.absoluteFill}
                     muted
                     contentFit="cover"
@@ -194,7 +238,7 @@ const styles = StyleSheet.create({
   },
   card: {
     height: CARD_H,
-    marginHorizontal: Spacing.md,
+    marginHorizontal: H_MARGIN,
     borderRadius: Radius.xl,
     overflow: 'hidden',
     backgroundColor: Colors.primaryLight,

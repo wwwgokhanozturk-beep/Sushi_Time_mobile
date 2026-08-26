@@ -4,14 +4,25 @@ import { useTranslation } from 'react-i18next';
 import { Colors, Radius, Spacing, Shadows } from '../core/theme';
 import CachedImage from './CachedImage';
 import { formatPrice } from '../utils/formatPrice';
+import { pickLocalized } from '../utils/localized';
 
-// Допродажа в корзине: показываем товары из тех же категорий, что уже лежат
-// в корзине (взял эдамаме — предложим острый и сладкий чили эдамаме).
-// Категория берётся из данных, поэтому список работает для любой категории,
-// которую администратор заведёт в будущем.
+// Полка «Добавить соусы и дополнения» в корзине.
+//
+// Раньше она показывала товары ТОЛЬКО тех категорий, что уже лежат в корзине.
+// На практике это означало вот что: положил одно эдамаме — и вся полка
+// состояла из этого же эдамаме, потому что других закусок в разделе не было.
+// Ни соусов, ни напитков, ни имбиря человек не видел, хотя полка называется
+// именно «соусы и дополнения».
+//
+// Теперь показываем всё меню, но в осмысленном порядке:
+//   1) то, что уже в корзине — видно, что именно берёшь, и можно докинуть ещё;
+//   2) товары из тех же категорий — ближайшая по смыслу допродажа;
+//   3) всё остальное.
+// Внутри каждой группы — порядок, заданный админом (sortOrder).
+//
+// Список горизонтальный и виртуализованный, поэтому длина меню его не тормозит.
 
 const CARD = 108;
-const MAX_SUGGESTIONS = 20;
 
 function buildExtras(cartItems, menuItems) {
   if (!cartItems.length || !menuItems.length) return [];
@@ -19,24 +30,27 @@ function buildExtras(cartItems, menuItems) {
   const cats = new Set(cartItems.map((i) => (i.menuItem.category || '').toLowerCase()));
   const qtyById = new Map(cartItems.map((i) => [i.menuItem._id, i.quantity]));
 
+  const rank = (m) => {
+    if (qtyById.has(m._id)) return 0;
+    return cats.has((m.category || '').toLowerCase()) ? 1 : 2;
+  };
+
   return menuItems
-    .filter((m) => m.isAvailable !== false && cats.has((m.category || '').toLowerCase()))
+    .filter((m) => m.isAvailable !== false)
     .sort((a, b) => {
-      // Уже добавленное — первым, как на сайте: так видно, что именно ты берёшь.
-      const inA = qtyById.has(a._id) ? 0 : 1;
-      const inB = qtyById.has(b._id) ? 0 : 1;
-      if (inA !== inB) return inA - inB;
+      const ra = rank(a);
+      const rb = rank(b);
+      if (ra !== rb) return ra - rb;
       return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
-    })
-    .slice(0, MAX_SUGGESTIONS);
+    });
 }
 
-function ExtraCard({ item, quantity, onAdd }) {
+function ExtraCard({ item, name, quantity, onAdd }) {
   return (
     <View style={styles.card}>
       <View style={styles.imgWrap}>
         {item.imageUrl ? (
-          <CachedImage uri={item.imageUrl} style={styles.img} contentFit="cover" />
+          <CachedImage uri={item.imageUrl} style={styles.img} contentFit="cover" cachePolicy="disk" />
         ) : (
           <View style={[styles.img, styles.imgFallback]}>
             <Text style={{ fontSize: 30 }}>🍣</Text>
@@ -46,7 +60,7 @@ function ExtraCard({ item, quantity, onAdd }) {
           <Text style={styles.addBtnText}>{quantity > 0 ? quantity : '+'}</Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+      <Text style={styles.name} numberOfLines={1}>{name}</Text>
       <Text style={styles.price}>{formatPrice(item.price)}</Text>
     </View>
   );
@@ -55,7 +69,7 @@ function ExtraCard({ item, quantity, onAdd }) {
 const MemoExtraCard = memo(ExtraCard);
 
 function CartExtras({ cartItems, menuItems, onAdd }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const extras = useMemo(() => buildExtras(cartItems, menuItems), [cartItems, menuItems]);
   const qtyById = useMemo(
     () => new Map(cartItems.map((i) => [i.menuItem._id, i.quantity])),
@@ -81,6 +95,7 @@ function CartExtras({ cartItems, menuItems, onAdd }) {
         renderItem={({ item }) => (
           <MemoExtraCard
             item={item}
+            name={pickLocalized(item, 'name', i18n.language)}
             quantity={qtyById.get(item._id) || 0}
             onAdd={() => onAdd(item)}
           />

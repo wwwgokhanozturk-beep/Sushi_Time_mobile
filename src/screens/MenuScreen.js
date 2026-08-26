@@ -18,6 +18,7 @@ import StickyCartButton from '../components/StickyCartButton';
 import { groupByCategory } from '../utils/menuGrouping';
 import AppHeader from '../components/AppHeader';
 import CategoryRail, { buildCategoryEntries } from '../components/CategoryRail';
+import { categoryLabel } from '../utils/categories';
 import { filterItems } from '../utils/searchItems';
 import { safeScroll } from '../utils/safeScroll';
 
@@ -27,8 +28,9 @@ import { safeScroll } from '../utils/safeScroll';
 const SECTION_H = 52;
 
 export default function MenuScreen({ navigation, route }) {
-  const { t } = useTranslation();
-  const { items, loading, error, loadMenu, hydrate, categoryOrder, categoryImages } = useMenuStore();
+  const { t, i18n } = useTranslation();
+  const { items, loading, error, loadMenu, hydrate, categoryOrder, categoryImages, categoryNames } =
+    useMenuStore();
   const addToCart = useCartStore((s) => s.addToCart);
   const totalItems = useCartStore(selectTotalItems);
   const [query, setQuery] = useState('');
@@ -61,12 +63,10 @@ export default function MenuScreen({ navigation, route }) {
     setRefreshing(false);
   }, [loadMenu]);
 
+  // Та же подпись, что на сайте и на Home: имя из админки, иначе перевод.
   const catLabel = useCallback(
-    (cat) =>
-      t(`cat_${(cat || '').toLowerCase()}`, {
-        defaultValue: (cat || '').charAt(0).toUpperCase() + (cat || '').slice(1),
-      }),
-    [t]
+    (cat) => categoryLabel(cat, categoryNames, i18n.language, t),
+    [categoryNames, i18n.language, t]
   );
 
   // Group items by category in the desired priority order → SectionList sections.
@@ -241,6 +241,11 @@ export default function MenuScreen({ navigation, route }) {
             initialNumToRender={8}
             maxToRenderPerBatch={8}
             windowSize={7}
+            // На Android SectionList по умолчанию включает removeClippedSubviews:
+            // при быстром скролле нативные <Image> в переиспользованных строках
+            // отцепляются от родителя, и Android закрывает приложение без
+            // единой JS-ошибки. Явно выключаем — windowSize даёт нужную плавность.
+            removeClippedSubviews={false}
             contentContainerStyle={{
               paddingBottom: totalItems > 0 ? 90 : Spacing.lg,
             }}

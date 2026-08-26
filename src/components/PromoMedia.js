@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import CachedImage from './CachedImage';
 import MediaSkeleton from './MediaSkeleton';
@@ -66,9 +66,20 @@ function useMediaKind(uri, mediaType) {
 function PromoVideo({ uri, style, muted = false, contentFit = 'cover', paused = false }) {
   // `useCaching` кладёт файл в кеш expo-video: первый показ грузится из сети,
   // все следующие — с диска, поэтому белого экрана при повторе больше нет.
+  //
+  // `bufferOptions` — критичный параметр памяти. По умолчанию на Android
+  // ExoPlayer буферизует 20 секунд вперёд, а это десятки МБ распакованных
+  // фреймов в RAM. Баннер — короткий зацикленный ролик, ему хватает 4 секунд:
+  // на слабых телефонах (3–4 ГБ RAM) это разница между «плавно играет» и
+  // «процесс убили по OOM».
   const player = useVideoPlayer({ uri, useCaching: true }, (p) => {
     p.loop = true;
     p.muted = muted;
+    p.bufferOptions = {
+      preferredForwardBufferDuration: 4, // sec (было 20 по умолчанию)
+      minBufferForPlayback: 1,
+      maxBufferBytes: 8 * 1024 * 1024,   // 8 МБ верхняя граница сетевого буфера
+    };
   });
 
   // Пока плеер не набрал данных, показываем скелет: раньше на этом месте
@@ -91,6 +102,23 @@ function PromoVideo({ uri, style, muted = false, contentFit = 'cover', paused = 
     // tear/band instead of simply dropping.
     if (paused) player.pause();
     else player.play();
+  }, [player, paused]);
+
+  // Пауза при уходе приложения в фон: без этого декодер продолжает работать
+  // вхолостую и держит буферы в памяти, пока пользователь листает WhatsApp,
+  // а система Android — считать нашу RAM «удерживаемой», что повышает шанс
+  // убийства процесса. При возврате возобновляем, если родитель не поставил
+  // paused=true самостоятельно.
+  useEffect(() => {
+    if (!player) return undefined;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        if (!paused) player.play();
+      } else {
+        player.pause();
+      }
+    });
+    return () => sub.remove();
   }, [player, paused]);
 
   return (

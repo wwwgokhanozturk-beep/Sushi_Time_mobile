@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
@@ -15,6 +16,7 @@ import { useSettingsStore } from './store/settingsStore';
 import { setupNotificationListeners } from './core/notifications';
 import { useAutoApplyUpdates } from './core/otaUpdates';
 import { setVideoCacheSizeAsync } from 'expo-video';
+import { clearImageMemoryCache } from './components/CachedImage';
 
 const navTheme = {
   ...DefaultTheme,
@@ -66,6 +68,19 @@ export default function App() {
       },
     });
     return cleanup;
+  }, []);
+
+  // Освобождаем memory-кеш expo-image, когда пользователь уходит в другое
+  // приложение. Диск не трогаем — картинки поднимутся мгновенно при возврате,
+  // а вот распакованные bitmap-ы в RAM за долгую сессию накапливают сотни МБ,
+  // и Android при первой же нехватке памяти убивает наш процесс.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background' || state === 'inactive') {
+        clearImageMemoryCache();
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   // Show splash until the animation sequence completes

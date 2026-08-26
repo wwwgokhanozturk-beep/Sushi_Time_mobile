@@ -17,6 +17,7 @@ import CachedImage from '../components/CachedImage';
 import { formatPrice } from '../utils/formatPrice';
 import { imageFrameTransform } from '../utils/imageFrame';
 import { pickLocalized } from '../utils/localized';
+import { categoryLabel } from '../utils/categories';
 
 const { width } = Dimensions.get('window');
 
@@ -25,6 +26,9 @@ export default function ItemDetailScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { itemId, item: passedItem } = route.params;
   const items = useMenuStore((s) => s.items);
+  // Название раздела здесь то же, что в витрине и на сайте: имя из админки,
+  // иначе зашитый перевод.
+  const categoryNames = useMenuStore((s) => s.categoryNames);
   const addToCart = useCartStore((s) => s.addToCart);
   const [quantity, setQuantity] = useState(1);
 
@@ -88,7 +92,7 @@ export default function ItemDetailScreen({ route, navigation }) {
         {/* Details */}
         <View style={styles.details}>
           <View style={styles.titleRow}>
-            <Text style={[Typography.heading2, { flex: 1 }]}>{item.name}</Text>
+            <Text style={[Typography.heading2, { flex: 1 }]}>{pickLocalized(item, 'name', i18n.language)}</Text>
             <Text style={[Typography.price, { fontSize: 22 }]}>{price}</Text>
           </View>
 
@@ -102,7 +106,7 @@ export default function ItemDetailScreen({ route, navigation }) {
             </View>
             <View style={[styles.metaChip, { backgroundColor: Colors.primary + '20', borderColor: 'transparent' }]}>
               <Text style={[styles.metaText, { color: Colors.primary }]}>
-                {t(`cat_${item.category.toLowerCase()}`, { defaultValue: item.category.charAt(0).toUpperCase() + item.category.slice(1) })}
+                {categoryLabel(item.category, categoryNames, i18n.language, t)}
               </Text>
             </View>
           </View>

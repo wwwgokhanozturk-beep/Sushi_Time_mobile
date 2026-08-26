@@ -39,9 +39,18 @@ export const usePromotionStore = create((set, get) => ({
       );
     } catch (e) {
       console.warn('[SushiTime] loadPromotions error:', e.message);
+      if (hasContent) {
+        set({ loading: false, error: null });
+        return;
+      }
+      // Просроченный снимок лучше пустого места на главной — см. тот же приём
+      // в menuStore. Баннер не критичен, поэтому ошибку здесь вообще не
+      // показываем: карусель просто останется на запасных слайдах.
+      const stale = await readCache(CacheKeys.promotions);
       set({
         loading: false,
-        error: hasContent ? null : (e.response?.data?.message || 'Failed to load promotions'),
+        error: null,
+        ...(stale?.length ? { promotions: stale } : {}),
       });
     }
   },

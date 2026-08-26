@@ -57,16 +57,22 @@ const styles = StyleSheet.create({
   sheen: {
     backgroundColor: Colors.shimmerHighlight,
   },
+  // Логотип занимает рамку целиком, а не висит маркой посередине.
+  //
+  // Раньше это была карточка 108×53 в белой плашке: на баннере в половину
+  // экрана она читалась как «что-то маленькое не загрузилось», а не как
+  // заставка бренда. Размеры заданы долями рамки, поэтому заставка выглядит
+  // одинаково и в баннере на телефоне, и на широком экране — и совпадает с
+  // сайтом, где место видео тоже закрывает крупный логотип.
   logoWrap: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: Radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: '8%',
+    paddingVertical: '10%',
   },
   logo: {
-    width: 108,
-    height: 53,
+    width: '100%',
+    height: '100%',
   },
 });

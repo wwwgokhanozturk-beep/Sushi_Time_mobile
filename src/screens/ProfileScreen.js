@@ -12,9 +12,15 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, Radius, Shadows } from '../core/theme';
+import Constants from 'expo-constants';
 import { useProfileStore } from '../store/profileStore';
 import { useOrderStore } from '../store/orderStore';
 import { PrimaryButton } from '../components/SharedWidgets';
+
+// Версия сборки, а не вписанная руками строка: раньше здесь висело v1.0.0,
+// когда в сторе уже лежала 1.1.7, и по «О приложении» нельзя было понять,
+// какую сборку держит в руках пользователь, приславший баг.
+const APP_VERSION = Constants.expoConfig?.version || '—';
 
 export default function ProfileScreen({ navigation }) {
   const { t } = useTranslation();
@@ -313,7 +319,7 @@ export default function ProfileScreen({ navigation }) {
           style={styles.linkTile}
           activeOpacity={0.7}
           onPress={() =>
-            Alert.alert(t('app_title'), `v1.0.0\n${t('about_desc')}`)
+            Alert.alert(t('app_title'), `v${APP_VERSION}\n${t('about_desc')}`)
           }
         >
           <Text style={{ fontSize: 20 }}>ℹ️</Text>
@@ -330,7 +336,10 @@ export default function ProfileScreen({ navigation }) {
         )}
       </View>
 
-      {/* Удаление профиля — отдельным блоком, чтобы не нажать случайно */}
+      {/* Удаление профиля — отдельным блоком, чтобы не нажать случайно.
+          Гостю блок не показываем: удалять нечего, а рядом с «Войти» и
+          «Создать аккаунт» он читался как «удалить приложение». */}
+      {isLoggedIn && (
       <View style={styles.section}>
         <Text style={Typography.heading3} numberOfLines={1}>{t('danger_zone')}</Text>
         <TouchableOpacity
@@ -347,6 +356,7 @@ export default function ProfileScreen({ navigation }) {
         </TouchableOpacity>
         <Text style={styles.dangerHint}>{t('delete_account_confirm')}</Text>
       </View>
+      )}
 
       <View style={{ height: Spacing.xxl }} />
     </ScrollView>

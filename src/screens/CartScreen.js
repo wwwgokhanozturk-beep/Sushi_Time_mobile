@@ -11,15 +11,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, Radius, Shadows } from '../core/theme';
 import { useCartStore, selectTotalPrice, selectTotalItems } from '../store/cartStore';
 import { useMenuStore } from '../store/menuStore';
+import { useProfileStore } from '../store/profileStore';
 import { PrimaryButton, EmptyState } from '../components/SharedWidgets';
 import DeliveryMinBanner from '../components/DeliveryMinBanner';
 import CartExtras from '../components/CartExtras';
 import CachedImage from '../components/CachedImage';
 import { formatPrice } from '../utils/formatPrice';
+import { pickLocalized } from '../utils/localized';
 import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, SERVICE_FEE } from '../core/constants';
 
 export default function CartScreen({ navigation }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const items = useCartStore((s) => s.items);
   const clearCart = useCartStore((s) => s.clearCart);
@@ -27,6 +29,11 @@ export default function CartScreen({ navigation }) {
   const addToCart = useCartStore((s) => s.addToCart);
   const totalPrice = useCartStore(selectTotalPrice);
   const totalItems = useCartStore(selectTotalItems);
+  // Заказ привязывается к аккаунту: без него некуда положить историю, нечем
+  // подтвердить владельца при отмене и некому слать пуш о статусе. Поэтому
+  // checkout закрыт для гостя — раньше он проходил его целиком и упирался в
+  // ошибку уже на отправке заказа.
+  const isLoggedIn = useProfileStore((s) => s.isLoggedIn);
 
   // Блок допродажи берёт товары из меню. Обычно оно уже загружено с Home,
   // но в корзину можно попасть и первым экраном — тогда поднимаем сами.
@@ -48,14 +55,14 @@ export default function CartScreen({ navigation }) {
         <View style={styles.tile}>
           <View style={styles.tileImage}>
             {item.menuItem.imageUrl ? (
-              <CachedImage uri={item.menuItem.imageUrl} style={styles.img} contentFit="cover" />
+              <CachedImage uri={item.menuItem.imageUrl} style={styles.img} contentFit="cover" cachePolicy="disk" />
             ) : (
               <Text style={{ fontSize: 32 }}>🍣</Text>
             )}
           </View>
 
           <View style={styles.tileInfo}>
-            <Text style={styles.tileName} numberOfLines={2}>{item.menuItem.name}</Text>
+            <Text style={styles.tileName} numberOfLines={2}>{pickLocalized(item.menuItem, 'name', i18n.language)}</Text>
             <Text style={styles.unitPrice}>{formatPrice(item.menuItem.price)}</Text>
           </View>
 
@@ -164,9 +171,16 @@ export default function CartScreen({ navigation }) {
           <Text style={[Typography.price, { fontSize: 20 }]}>{formatPrice(grandTotal)}</Text>
         </View>
         <View style={{ height: Spacing.sm }} />
+        {!isLoggedIn && (
+          <Text style={styles.authHint} numberOfLines={2}>
+            {t('login_required_hint')}
+          </Text>
+        )}
         <PrimaryButton
-          label={t('proceed_to_checkout')}
-          onPress={() => navigation.navigate('Checkout')}
+          label={isLoggedIn ? t('proceed_to_checkout') : t('sign_in_to_order')}
+          onPress={() =>
+            navigation.navigate(isLoggedIn ? 'Checkout' : 'Login')
+          }
           icon={<Text style={{ color: '#fff' }}>→</Text>}
         />
       </View>
@@ -178,6 +192,12 @@ const SEPARATOR = () => <View style={{ height: Spacing.sm }} />;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  authHint: {
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
