@@ -7,6 +7,7 @@ export const TIP_OPTIONS = [0, 1, 2, 3, 5];
 // Restaurant location (Mahmutlar, Kumru Sk. No:7/D, 07400 Alanya/Antalya)
 export const RESTAURANT_LAT = 36.4907923;
 export const RESTAURANT_LNG = 32.0966857;
+export const RESTAURANT_ADDRESS = 'Mahmutlar, Kumru Sk. No:7/D, 07400 Alanya/Antalya';
 // Логотип для маркера ресторана внутри WebView-карты. Берём с сайта: карта и
 // так не работает без сети, а тащить картинку в бандл ради этого незачем.
 export const RESTAURANT_LOGO_URL = 'https://sushitimetr.com/image.png';
