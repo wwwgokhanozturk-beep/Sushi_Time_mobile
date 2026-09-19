@@ -121,11 +121,24 @@ function PromoVideo({ uri, style, muted = false, contentFit = 'cover', paused = 
     return () => sub.remove();
   }, [player, paused]);
 
+  // На Android видео по умолчанию рисуется в SurfaceView — это отдельный слой
+  // поверх окна, который не участвует в иерархии View: масштаб и сдвиг
+  // родителя на него не действуют, скругление карточки его не обрезает.
+  // Кадрирование из админки приходит именно трансформацией, поэтому как только
+  // она есть — переключаемся на TextureView, обычный View, который честно
+  // масштабируется и режется по краю. Решение принимается само по стилю, чтобы
+  // следующий экран с кадрированием не наступил на то же самое.
+  // Менять тип поверхности на живом плеере нельзя, отсюда key: если
+  // кадрирование вдруг появится или пропадёт, VideoView пересоздастся.
+  const surfaceType = StyleSheet.flatten(style)?.transform ? 'textureView' : 'surfaceView';
+
   return (
     // Обёртка нужна, чтобы поверх видео лечь скелету; overflow скругляет
     // видео по радиусу контейнера (кружок «сторис», карточка баннера).
     <View style={[style, styles.clip]}>
       <VideoView
+        key={surfaceType}
+        surfaceType={surfaceType}
         style={StyleSheet.absoluteFill}
         player={player}
         contentFit={contentFit}

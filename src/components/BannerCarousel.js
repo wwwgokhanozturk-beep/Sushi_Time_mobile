@@ -11,7 +11,9 @@ import { useIsFocused } from '@react-navigation/native';
 import { Colors, Spacing, Radius, Shadows } from '../core/theme';
 import { usePromotionStore } from '../store/promotionStore';
 import { PromoMedia } from './PromoMedia';
+import CachedImage from './CachedImage';
 import MediaSkeleton from './MediaSkeleton';
+import { imageFrameTransform } from '../utils/imageFrame';
 import { pickLocalized } from '../utils/localized';
 import { safeScroll } from '../utils/safeScroll';
 
@@ -172,15 +174,39 @@ function BannerCarousel() {
             <View style={styles.slide}>
               <View style={styles.card}>
                 {item.imageUrl && live ? (
-                  <PromoMedia
-                    uri={item.imageUrl}
-                    posterUrl={item.posterUrl}
-                    mediaType={item.mediaType}
-                    paused={false}
-                    style={StyleSheet.absoluteFill}
-                    muted
-                    contentFit="cover"
-                  />
+                  <>
+                    {/* Размытая подложка того же фото — закрывает поля, которые
+                        оставляет contain. Как на сайте и в превью админки.
+                        Только для картинок: сайт не умеет рисовать видео фоном,
+                        там поля остаются цвета карточки — здесь то же самое. */}
+                    {item.mediaType === 'image' && (
+                      <CachedImage
+                        uri={item.imageUrl}
+                        style={[StyleSheet.absoluteFill, styles.backdrop]}
+                        contentFit="cover"
+                        blurRadius={24}
+                      />
+                    )}
+                    {/* Кадрирование из админки: та же модель, что на сайте и в
+                        превью «Sitede nasıl görünür» — медиа целиком (contain),
+                        затем сдвиг в % рамки и масштаб. Раньше здесь был cover
+                        без кадрирования вовсе: админ подбирал масштаб по сайту,
+                        а приложение его игнорировало. Видео с белыми полями,
+                        зашитыми прямо в файл, на сайте обрезалось масштабом
+                        1.5, а в приложении показывало эти поля по углам. */}
+                    <PromoMedia
+                      uri={item.imageUrl}
+                      posterUrl={item.posterUrl}
+                      mediaType={item.mediaType}
+                      paused={false}
+                      style={[
+                        StyleSheet.absoluteFill,
+                        { transform: imageFrameTransform(item, CARD_W, CARD_H) },
+                      ]}
+                      muted
+                      contentFit="contain"
+                    />
+                  </>
                 ) : item.imageUrl ? (
                   <MediaSkeleton style={StyleSheet.absoluteFill} radius={0} showLogo={false} />
                 ) : (
@@ -247,6 +273,11 @@ const styles = StyleSheet.create({
   fallback: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Чуть больше карточки, как на сайте: иначе размытие тает к краям и по
+  // периметру проступает светлая рамка.
+  backdrop: {
+    transform: [{ scale: 1.15 }],
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
