@@ -50,7 +50,7 @@ export default function CheckoutScreen({ navigation }) {
   const [promoCode, setPromoCode] = useState('');
   const [promoApplied, setPromoApplied] = useState(null);
   const [tip, setTip] = useState(0);
-  // 'cash' | 'card' — both are paid at delivery. Online payment ('card_online') is
+  // 'cash' | 'card' | 'qr' — all three are paid at delivery. Online payment ('card_online') is
   // temporarily disabled; keep the related code below commented out for future re-enable.
   const [paymentMethod, setPaymentMethod] = useState('cash');
 
@@ -385,6 +385,14 @@ export default function CheckoutScreen({ navigation }) {
               💳 {t('card')}
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.paymentChip, paymentMethod === 'qr' && styles.paymentChipActive]}
+            onPress={() => setPaymentMethod('qr')}
+          >
+            <Text style={[styles.paymentChipText, paymentMethod === 'qr' && { color: '#fff' }]}>
+              📱 {t('qr')}
+            </Text>
+          </TouchableOpacity>
           {/*
           // Online card payment — disabled, will be reconnected later.
           <TouchableOpacity
@@ -541,9 +549,8 @@ const styles = StyleSheet.create({
     flex: 1,
     marginTop: Spacing.md,
   },
-  paymentRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
+  paymentRow: { gap: Spacing.sm, marginTop: Spacing.sm },
   paymentChip: {
-    flex: 1,
     height: 56,
     borderRadius: Radius.lg,
     backgroundColor: Colors.surface,

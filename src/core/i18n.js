@@ -138,6 +138,7 @@ const en = {
   payment_method: 'Payment method',
   cash: 'Cash on delivery',
   card: 'Card on delivery',
+  qr: 'QR code on delivery',
   card_online: 'Online card payment', // disabled — kept for future re-enable
   pay_now: 'Pay now',
   building_name: 'Building / Complex name',
@@ -301,6 +302,7 @@ const ru = {
   payment_method: 'Способ оплаты',
   cash: 'Наличные при доставке',
   card: 'Картой при доставке',
+  qr: 'QR-код при доставке',
   card_online: 'Оплата картой онлайн', // отключено — оставлено на будущее
   pay_now: 'Оплатить',
   building_name: 'Название дома / жилого комплекса',
@@ -464,6 +466,7 @@ const tr = {
   payment_method: 'Ödeme yöntemi',
   cash: 'Kapıda nakit',
   card: 'Kapıda kart',
+  qr: 'Kapıda QR kod',
   card_online: 'Online kart ödeme', // devre dışı — ileride yeniden bağlanacak
   pay_now: 'Şimdi öde',
   building_name: 'Bina / Rezidans adı',
