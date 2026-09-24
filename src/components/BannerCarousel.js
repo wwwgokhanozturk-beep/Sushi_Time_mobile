@@ -16,8 +16,27 @@ const { width: SW } = Dimensions.get('window');
 const SLIDE_W = SW;                    // full-width page → clean paging snap
 const CARD_H = Math.round(SW * 0.62);  // hero height — taller than 16:9 so
                                        // contentFit="cover" crops less off the promo
+const CARD_W = SW - Spacing.md * 2;    // card sits inside marginHorizontal: Spacing.md
 // Default when a promotion has no duration of its own.
 const AUTOPLAY_MS = 6000;
+
+// The admin frames each promo with a zoom + offset (in % of the frame), the
+// same values the website applies as `translate(x%, y%) scale(s)`. Uploaded
+// promos often carry a baked-in border that only this zoom hides, so skipping
+// it leaves grey bands around the media. RN transforms take pixels here.
+function frameTransform(promo) {
+  const scale = Number(promo.imageScale) || 1;
+  const x = Number(promo.imageOffsetX) || 0;
+  const y = Number(promo.imageOffsetY) || 0;
+  if (scale === 1 && !x && !y) return null;
+  return {
+    transform: [
+      { translateX: (x / 100) * CARD_W },
+      { translateY: (y / 100) * CARD_H },
+      { scale },
+    ],
+  };
+}
 
 const BADGE_COLORS = {
   HOT: '#EF4444',
@@ -105,7 +124,7 @@ export default function BannerCarousel() {
                     uri={item.imageUrl}
                     mediaType={item.mediaType}
                     paused={index !== idx}
-                    style={StyleSheet.absoluteFill}
+                    style={[StyleSheet.absoluteFill, frameTransform(item)]}
                     muted
                     contentFit="cover"
                   />
