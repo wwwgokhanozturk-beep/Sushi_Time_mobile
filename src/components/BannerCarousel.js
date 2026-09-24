@@ -5,6 +5,7 @@ import {
   FlatList,
   StyleSheet,
   Dimensions,
+  AppState,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, Radius, Shadows } from '../core/theme';
@@ -74,8 +75,28 @@ export default function BannerCarousel() {
 
   useEffect(() => { loadPromotions(); }, []);
 
+  // Home is a tab that stays mounted, so the mount fetch alone would keep
+  // stale promos until a cold start. Refetch whenever the app returns to the
+  // foreground so admin edits reach customers without restarting the app.
+  useEffect(() => {
+    let prev = AppState.currentState;
+    const sub = AppState.addEventListener('change', (next) => {
+      if (prev.match(/inactive|background/) && next === 'active') loadPromotions();
+      prev = next;
+    });
+    return () => sub.remove();
+  }, [loadPromotions]);
+
   const slides = promotions.length ? promotions : FALLBACK;
   const count = slides.length;
+
+  // A refetch can return fewer promos than before; don't point past the end.
+  useEffect(() => {
+    if (idx >= count) {
+      setIdx(0);
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [idx, count]);
 
   // Auto-advance, looping back to the first slide. A timeout per slide rather
   // than one fixed interval, because each promotion carries its own duration

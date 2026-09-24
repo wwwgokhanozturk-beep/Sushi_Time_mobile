@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, Radius, Shadows } from '../core/theme';
 import { useMenuStore } from '../store/menuStore';
 import { useCartStore, selectTotalItems } from '../store/cartStore';
+import { usePromotionStore } from '../store/promotionStore';
 import { ErrorState } from '../components/SharedWidgets';
 import SushiCard from '../components/SushiCard';
 import BannerCarousel from '../components/BannerCarousel';
@@ -41,6 +42,7 @@ export default function HomeScreen({ navigation }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { items, loading, error, loadMenu, categoryOrder } = useMenuStore();
+  const loadPromotions = usePromotionStore((s) => s.loadPromotions);
   const addToCart = useCartStore((s) => s.addToCart);
   const totalItems = useCartStore(selectTotalItems);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,7 +61,8 @@ export default function HomeScreen({ navigation }) {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadMenu();
+    // Promotions too, so admin edits (framing, order, new promos) show up.
+    await Promise.all([loadMenu(), loadPromotions()]);
     setRefreshing(false);
   }, []);
 
