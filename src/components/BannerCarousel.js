@@ -14,7 +14,8 @@ import { slideDurationMs } from '../utils/promo';
 
 const { width: SW } = Dimensions.get('window');
 const SLIDE_W = SW;                    // full-width page → clean paging snap
-const CARD_H = Math.round(SW * 0.52);  // hero height (~3:1.9 on a phone)
+const CARD_H = Math.round(SW * 0.62);  // hero height — taller than 16:9 so
+                                       // contentFit="cover" crops less off the promo
 // Default when a promotion has no duration of its own.
 const AUTOPLAY_MS = 6000;
 
