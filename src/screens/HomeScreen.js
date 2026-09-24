@@ -172,15 +172,15 @@ export default function HomeScreen({ navigation }) {
         {/* ─── Delivery info strip ─── */}
         <View style={styles.infoStrip}>
           <View style={styles.infoChip}>
-            <Text style={{ fontSize: 16 }}>🚚</Text>
+            <Text style={styles.infoChipIcon}>🚚</Text>
             <Text style={styles.infoChipText} numberOfLines={1}>{t('free_delivery')}</Text>
           </View>
           <View style={styles.infoChip}>
-            <Text style={{ fontSize: 16 }}>⏱</Text>
+            <Text style={styles.infoChipIcon}>⏱</Text>
             <Text style={styles.infoChipText} numberOfLines={1}>25-35 {t('min_label')}</Text>
           </View>
           <View style={styles.infoChip}>
-            <Text style={{ fontSize: 16 }}>⭐</Text>
+            <Text style={styles.infoChipIcon}>⭐</Text>
             <Text style={styles.infoChipText}>4.9</Text>
           </View>
         </View>
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   infoStrip: {
     flexDirection: 'row',
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: 6,
     gap: Spacing.sm,
   },
   infoChip: {
@@ -346,15 +346,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.sm,
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
     borderWidth: 1,
     borderColor: Colors.divider,
-    gap: 8,
+    gap: 6,
+  },
+  infoChipIcon: {
+    fontSize: 14,
   },
   infoChipText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
     color: Colors.textPrimary,
     flexShrink: 1,
