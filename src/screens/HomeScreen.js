@@ -159,7 +159,7 @@ export default function HomeScreen({ navigation }) {
         ref={scrollRef}
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        stickyHeaderIndices={[4]}
+        stickyHeaderIndices={[2]}
         onScroll={onScroll}
         scrollEventThrottle={16}
         refreshControl={
@@ -168,22 +168,6 @@ export default function HomeScreen({ navigation }) {
       >
         {/* ─── Hero Banner (matches the website's top banner) ─── */}
         <BannerCarousel />
-
-        {/* ─── Delivery info strip ─── */}
-        <View style={styles.infoStrip}>
-          <View style={styles.infoChip}>
-            <Text style={styles.infoChipIcon}>🚚</Text>
-            <Text style={styles.infoChipText} numberOfLines={1}>{t('free_delivery')}</Text>
-          </View>
-          <View style={styles.infoChip}>
-            <Text style={styles.infoChipIcon}>⏱</Text>
-            <Text style={styles.infoChipText} numberOfLines={1}>25-35 {t('min_label')}</Text>
-          </View>
-          <View style={styles.infoChip}>
-            <Text style={styles.infoChipIcon}>⭐</Text>
-            <Text style={styles.infoChipText}>4.9</Text>
-          </View>
-        </View>
 
         {/* ─── Search bar ─── */}
         <TouchableOpacity
@@ -333,35 +317,6 @@ const styles = StyleSheet.create({
 
 
 
-
-  // ── Info strip ──
-  infoStrip: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
-    gap: Spacing.sm,
-  },
-  infoChip: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.divider,
-    gap: 6,
-  },
-  infoChipIcon: {
-    fontSize: 14,
-  },
-  infoChipText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    flexShrink: 1,
-  },
 
   // ── Search ──
   searchBar: {
