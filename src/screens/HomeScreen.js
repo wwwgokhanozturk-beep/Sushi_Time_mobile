@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, Radius, Shadows } from '../core/theme';
 import { useMenuStore } from '../store/menuStore';
 import { useCartStore, selectTotalItems } from '../store/cartStore';
+import { usePromotionStore } from '../store/promotionStore';
 import { ErrorState, SkeletonMenuList } from '../components/SharedWidgets';
 import SushiCard, { LIST_ROW_HEIGHT } from '../components/SushiCard';
 import StickyCartButton from '../components/StickyCartButton';
@@ -35,6 +36,7 @@ export default function HomeScreen({ navigation }) {
   const { t, i18n } = useTranslation();
   const { items, loading, error, loadMenu, hydrate, categoryOrder, categoryImages, categoryNames } =
     useMenuStore();
+  const loadPromotions = usePromotionStore((s) => s.loadPromotions);
   const addToCart = useCartStore((s) => s.addToCart);
   const totalItems = useCartStore(selectTotalItems);
   const [refreshing, setRefreshing] = useState(false);
@@ -57,9 +59,11 @@ export default function HomeScreen({ navigation }) {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadMenu();
+    // Акции тоже: иначе правки из админки (кадрирование, порядок, новые
+    // акции) доходят до клиента только после холодного старта.
+    await Promise.all([loadMenu(), loadPromotions()]);
     setRefreshing(false);
-  }, [loadMenu]);
+  }, [loadMenu, loadPromotions]);
 
   const grouped = useMemo(
     () => groupByCategory(items, categoryOrder),
@@ -229,26 +233,6 @@ export default function HomeScreen({ navigation }) {
       }}>
         <BannerCarousel />
 
-        {/* ─── Delivery info strip ───
-            Одна карточка с разделителями, как на сайте: три отдельные плашки
-            выглядели как три кнопки, хотя нажать нельзя ни одну. */}
-        <View style={styles.infoStrip}>
-          <View style={[styles.infoItem, styles.infoItemWide]}>
-            <Text style={styles.infoIcon}>🚚</Text>
-            <Text style={styles.infoText} numberOfLines={2}>{t('free_delivery')}</Text>
-          </View>
-          <View style={styles.infoDivider} />
-          <View style={styles.infoItem}>
-            <Text style={styles.infoIcon}>⏱</Text>
-            <Text style={styles.infoText} numberOfLines={2}>25-35 {t('min_label')}</Text>
-          </View>
-          <View style={styles.infoDivider} />
-          <View style={[styles.infoItem, styles.infoItemNarrow]}>
-            <Text style={styles.infoIcon}>⭐</Text>
-            <Text style={styles.infoText}>4.9</Text>
-          </View>
-        </View>
-
         {/* ─── Search: открывает меню с уже поднятой клавиатурой ─── */}
         <TouchableOpacity
           style={styles.searchBar}
@@ -335,60 +319,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-  },
-
-  // ── Info strip ──
-  // На сайте это одна белая карточка с тонкими разделителями, а не три плашки.
-  // Ширина и поля совпадают с баннером над ней, поэтому левый и правый край
-  // всей шапки идут одной линией.
-  infoStrip: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    marginHorizontal: Spacing.md,
-    marginTop: Spacing.md,
-    marginBottom: Spacing.sm,
-    minHeight: 58,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.divider,
-    ...Shadows.sm,
-  },
-  // Три равные доли не подходят: «Ücretsiz teslimat» и «Бесплатная доставка»
-  // длиннее рейтинга в разы. Доли распределены по длине текста (как на сайте),
-  // а сам текст может встать в две строки — на русском одной строки не хватает
-  // даже широкой доле, а обрезать «Бесплатная доста…» нельзя.
-  infoItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: 6,
-    gap: 7,
-  },
-  infoItemWide: {
-    flex: 1.35,
-  },
-  infoItemNarrow: {
-    flex: 0.66,
-  },
-  // Разделитель не доходит до краёв карточки — так он читается как черта
-  // между колонками, а не как граница ещё одной плашки.
-  infoDivider: {
-    width: 1,
-    marginVertical: 12,
-    backgroundColor: Colors.divider,
-  },
-  infoIcon: {
-    fontSize: 16,
-  },
-  infoText: {
-    fontSize: 12.5,
-    lineHeight: 15,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    flexShrink: 1,
   },
 
   // ── Search ──

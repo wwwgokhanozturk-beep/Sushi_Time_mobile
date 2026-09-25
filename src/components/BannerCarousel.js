@@ -5,6 +5,7 @@ import {
   FlatList,
   StyleSheet,
   Dimensions,
+  AppState,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useIsFocused } from '@react-navigation/native';
@@ -20,8 +21,10 @@ import { safeScroll } from '../utils/safeScroll';
 const { width: SW } = Dimensions.get('window');
 const SLIDE_W = SW;                    // full-width page → clean paging snap
 
-// Пропорция карточки снята с sushitimetr.com: при ширине окна 591 баннер
-// занимает 535×310, то есть 1.726:1.
+// Пропорция карточки — та же, что у баннера сайта на телефоне
+// (web_client BannerCarousel, slideMobile: aspectRatio 50 / 31 ≈ 1.61:1):
+// админ кадрирует акцию один раз под «телефон», и сайт с приложением
+// должны показать одно и то же.
 //
 // Раньше высота считалась от ширины ЭКРАНА (SW * 0.52) и не учитывала боковые
 // поля — карточка выходила площе сайта, и баннер на телефоне читался мельче.
@@ -29,7 +32,7 @@ const SLIDE_W = SW;                    // full-width page → clean paging snap
 // и Android при любой ширине экрана, а не «примерно похожая».
 const H_MARGIN = Spacing.md;
 const CARD_W = SW - H_MARGIN * 2;
-const CARD_ASPECT = 535 / 310;
+const CARD_ASPECT = 50 / 31;
 const CARD_H = Math.round(CARD_W / CARD_ASPECT);
 
 // Сколько держится один слайд. Значение приходит с сервера (админ задаёт его
@@ -89,8 +92,28 @@ function BannerCarousel() {
     hydrate().finally(loadPromotions);
   }, []);
 
+  // Home остаётся смонтированным, поэтому одного запроса при монтировании мало:
+  // правки из админки дошли бы только после холодного старта. Освежаем акции
+  // каждый раз, когда приложение возвращается из фона.
+  useEffect(() => {
+    let prev = AppState.currentState;
+    const sub = AppState.addEventListener('change', (next) => {
+      if (prev.match(/inactive|background/) && next === 'active') loadPromotions();
+      prev = next;
+    });
+    return () => sub.remove();
+  }, [loadPromotions]);
+
   const slides = promotions.length ? promotions : FALLBACK;
   const count = slides.length;
+
+  // После обновления акций их может стать меньше — не указываем за конец списка.
+  useEffect(() => {
+    if (idx >= count) {
+      setIdx(0);
+      safeScroll(() => listRef.current?.scrollToOffset({ offset: 0, animated: false }));
+    }
+  }, [idx, count]);
 
   // Пока ничего не пришло и кеш пуст — держим скелет ровно того же размера,
   // что и баннер, чтобы контент под ним не прыгал при появлении карусели.
