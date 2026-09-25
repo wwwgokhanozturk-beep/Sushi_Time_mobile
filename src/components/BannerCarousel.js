@@ -15,8 +15,8 @@ import { slideDurationMs } from '../utils/promo';
 
 const { width: SW } = Dimensions.get('window');
 const SLIDE_W = SW;                    // full-width page → clean paging snap
-const CARD_H = Math.round(SW * 0.62);  // hero height — taller than 16:9 so
-                                       // contentFit="cover" crops less off the promo
+const CARD_H = Math.round(SW * 0.62);  // hero height — same 50/31 frame as the
+                                       // website's phone layout
 const CARD_W = SW - Spacing.md * 2;    // card sits inside marginHorizontal: Spacing.md
 // Default when a promotion has no duration of its own.
 const AUTOPLAY_MS = 6000;
@@ -147,7 +147,12 @@ export default function BannerCarousel() {
                     paused={index !== idx}
                     style={[StyleSheet.absoluteFill, frameTransform(item)]}
                     muted
-                    contentFit="cover"
+                    // "contain", like the website: the admin's zoom is tuned
+                    // against the whole media fitted in the frame. "cover"
+                    // pre-enlarges it, so a vertical video at zoom 3 came out
+                    // ~8x bigger than on the site.
+                    contentFit="contain"
+                    resizeMode="contain"
                   />
                 ) : (
                   <View style={[StyleSheet.absoluteFill, styles.fallback, { backgroundColor: item.color || Colors.primary }]}>
