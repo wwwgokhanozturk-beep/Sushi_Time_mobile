@@ -25,6 +25,14 @@ const probeCache = new Map(); // uri -> 'video' | 'image'
 const NO_FULLSCREEN = { enable: false };
 const probeInFlight = new Map(); // uri -> Promise<'video'|'image'>
 
+// Маленький кадр из ролика — для размытой подложки под видео в баннере.
+// Берём его у того же плеера, что уже играет: второй VideoView ради фона —
+// это второй декодер, а именно от них Android и падал по памяти.
+// 320 px хватает — картинка всё равно размыта; кешируем на весь запуск.
+const thumbCache = new Map(); // uri -> VideoThumbnail
+const THUMB_AT_SEC = 1;       // не первый кадр: у роликов он часто чёрный
+const THUMB_MAX_PX = 320;
+
 function probeKind(uri) {
   if (probeCache.has(uri)) return Promise.resolve(probeCache.get(uri));
   if (probeInFlight.has(uri)) return probeInFlight.get(uri);
@@ -63,7 +71,7 @@ function useMediaKind(uri, mediaType) {
 }
 
 // Plays a promo video. `muted` story = full sound; bubble/banner preview = silent loop.
-function PromoVideo({ uri, style, muted = false, contentFit = 'cover', paused = false }) {
+function PromoVideo({ uri, style, muted = false, contentFit = 'cover', paused = false, onFrame }) {
   // `useCaching` кладёт файл в кеш expo-video: первый показ грузится из сети,
   // все следующие — с диска, поэтому белого экрана при повторе больше нет.
   //
@@ -94,6 +102,22 @@ function PromoVideo({ uri, style, muted = false, contentFit = 'cover', paused = 
     });
     return () => sub?.remove?.();
   }, [player]);
+
+  useEffect(() => {
+    if (!ready || !onFrame) return undefined;
+    const cached = thumbCache.get(uri);
+    if (cached) { onFrame(cached); return undefined; }
+    let cancelled = false;
+    player
+      .generateThumbnailsAsync(THUMB_AT_SEC, { maxWidth: THUMB_MAX_PX, maxHeight: THUMB_MAX_PX })
+      .then(([thumb]) => {
+        if (!thumb) return;
+        thumbCache.set(uri, thumb);
+        if (!cancelled) onFrame(thumb);
+      })
+      .catch(() => {}); // без подложки края просто цвета карточки
+    return () => { cancelled = true; };
+  }, [ready, onFrame, player, uri]);
 
   useEffect(() => {
     if (!player) return;
@@ -157,7 +181,7 @@ const styles = StyleSheet.create({
 
 // Picks a video player or an <Image> based on the media's real type.
 export function PromoMedia({
-  uri, style, muted, contentFit = 'cover', mediaType, paused = false, posterUrl,
+  uri, style, muted, contentFit = 'cover', mediaType, paused = false, posterUrl, onFrame,
 }) {
   const kind = useMediaKind(uri, mediaType);
 
@@ -174,6 +198,7 @@ export function PromoMedia({
         muted={muted}
         contentFit={contentFit}
         paused={paused}
+        onFrame={onFrame}
       />
     );
   }
