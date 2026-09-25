@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import httpClient from '../core/httpClient';
+import { ApiConstants } from '../core/api';
 
 const STORAGE_KEY = 'sushi_time_profile';
 
@@ -84,6 +86,40 @@ export const useProfileStore = create((set, get) => ({
   logout: async () => {
     set({ ...defaultProfile, ...defaultAuth, loaded: true });
     await AsyncStorage.removeItem(STORAGE_KEY);
+  },
+
+  // Полное удаление профиля. Сначала просим сервер удалить аккаунт, затем в
+  // любом случае стираем всё, что хранится на устройстве, — пользователь,
+  // нажавший «удалить», не должен остаться с заполненным адресом и корзиной.
+  //
+  // Возвращает { server: 'deleted' | 'unsupported' | 'failed' | 'skipped' },
+  // чтобы экран мог честно сказать, что произошло: если бэкенд ещё не умеет
+  // удалять аккаунт, обещать пользователю обратное нельзя.
+  deleteAccount: async () => {
+    const wasLoggedIn = get().isLoggedIn;
+    let server = wasLoggedIn ? 'failed' : 'skipped';
+
+    if (wasLoggedIn) {
+      try {
+        await httpClient.delete(ApiConstants.deleteAccount);
+        server = 'deleted';
+      } catch (e) {
+        const status = e.response?.status;
+        // Маршрута ещё нет на сервере — это не ошибка клиента.
+        server = status === 404 || status === 405 || status === 501
+          ? 'unsupported'
+          : 'failed';
+        console.warn('[SushiTime] deleteAccount error:', e.message, status);
+      }
+    }
+
+    set({ ...defaultProfile, ...defaultAuth, loaded: true });
+    await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+    // Через стор, а не удалением ключа напрямую: иначе корзина исчезнет
+    // с диска, но останется в памяти до перезапуска приложения.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    require('./cartStore').useCartStore.getState().clearCart();
+    return { server };
   },
 
   clearProfile: async () => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import {
   View,
   Text,
@@ -8,36 +8,36 @@ import {
   AppState,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useIsFocused } from '@react-navigation/native';
 import { Colors, Spacing, Radius, Shadows } from '../core/theme';
 import { usePromotionStore } from '../store/promotionStore';
 import { PromoMedia } from './PromoMedia';
-import { slideDurationMs } from '../utils/promo';
+import CachedImage from './CachedImage';
+import MediaSkeleton from './MediaSkeleton';
+import { imageFrameTransform } from '../utils/imageFrame';
+import { pickLocalized } from '../utils/localized';
+import { safeScroll } from '../utils/safeScroll';
 
 const { width: SW } = Dimensions.get('window');
 const SLIDE_W = SW;                    // full-width page → clean paging snap
-const CARD_H = Math.round(SW * 0.62);  // hero height — same 50/31 frame as the
-                                       // website's phone layout
-const CARD_W = SW - Spacing.md * 2;    // card sits inside marginHorizontal: Spacing.md
-// Default when a promotion has no duration of its own.
-const AUTOPLAY_MS = 6000;
 
-// The admin frames each promo with a zoom + offset (in % of the frame), the
-// same values the website applies as `translate(x%, y%) scale(s)`. Uploaded
-// promos often carry a baked-in border that only this zoom hides, so skipping
-// it leaves grey bands around the media. RN transforms take pixels here.
-function frameTransform(promo) {
-  const scale = Number(promo.imageScale) || 1;
-  const x = Number(promo.imageOffsetX) || 0;
-  const y = Number(promo.imageOffsetY) || 0;
-  if (scale === 1 && !x && !y) return null;
-  return {
-    transform: [
-      { translateX: (x / 100) * CARD_W },
-      { translateY: (y / 100) * CARD_H },
-      { scale },
-    ],
-  };
-}
+// Пропорция карточки — та же, что у баннера сайта на телефоне
+// (web_client BannerCarousel, slideMobile: aspectRatio 50 / 31 ≈ 1.61:1):
+// админ кадрирует акцию один раз под «телефон», и сайт с приложением
+// должны показать одно и то же.
+//
+// Раньше высота считалась от ширины ЭКРАНА (SW * 0.52) и не учитывала боковые
+// поля — карточка выходила площе сайта, и баннер на телефоне читался мельче.
+// Считаем от ширины самой карточки: тогда пропорция одна и та же на web, iOS
+// и Android при любой ширине экрана, а не «примерно похожая».
+const H_MARGIN = Spacing.md;
+const CARD_W = SW - H_MARGIN * 2;
+const CARD_ASPECT = 50 / 31;
+const CARD_H = Math.round(CARD_W / CARD_ASPECT);
+
+// Сколько держится один слайд. Значение приходит с сервера (админ задаёт его
+// в панели), это — запасное на случай, если настройка ещё не сохранена.
+const DEFAULT_AUTOPLAY_MS = 6000;
 
 const BADGE_COLORS = {
   HOT: '#EF4444',
@@ -54,30 +54,47 @@ const FALLBACK = [
   { _id: '__b3', title: 'Скидка на сет', description: 'Закажи сет и получи фирменный ролл бесплатно', badge: 'SALE', discountPercent: 20, color: '#8B5CF6', emoji: '🎁' },
 ];
 
-function pickLang(promo, lang) {
-  const title =
-    (lang === 'ru' && promo.title_ru) ||
-    (lang === 'tr' && promo.title_tr) ||
-    promo.title;
-  const desc =
-    (lang === 'ru' && promo.description_ru) ||
-    (lang === 'tr' && promo.description_tr) ||
-    promo.description;
-  return { title, desc };
+// Длительность показа слайда. Админ задаёт её в секундах у каждой акции;
+// значение вне разумных границ (или пустое) игнорируем — иначе опечатка вроде
+// «0» или «3600» превращает карусель в мигалку или вешает её навсегда.
+const MIN_SLIDE_SEC = 2;
+const MAX_SLIDE_SEC = 60;
+
+function slideDurationMs(slide) {
+  const sec = Number(slide?.durationSec);
+  if (!Number.isFinite(sec) || sec < MIN_SLIDE_SEC || sec > MAX_SLIDE_SEC) {
+    return DEFAULT_AUTOPLAY_MS;
+  }
+  return Math.round(sec * 1000);
 }
 
-export default function BannerCarousel() {
+function pickLang(promo, lang) {
+  return {
+    title: pickLocalized(promo, 'title', lang),
+    desc: pickLocalized(promo, 'description', lang),
+  };
+}
+
+function BannerCarousel() {
   const { i18n } = useTranslation();
   const lang = i18n.language?.slice(0, 2) || 'en';
-  const { promotions, loadPromotions } = usePromotionStore();
+  const { promotions, loading, loadPromotions, hydrate } = usePromotionStore();
   const listRef = useRef(null);
   const [idx, setIdx] = useState(0);
+  // Home живёт во вкладке и остаётся смонтированным, когда пользователь ушёл
+  // в «Меню». Работающий за кадром видеодекодер — дефицитный ресурс Android:
+  // пока он занят, тяжёлый список меню отрисовывается на грани, и система
+  // вправе убить процесс. Вне фокуса плеер ставим на паузу.
+  const isFocused = useIsFocused();
 
-  useEffect(() => { loadPromotions(); }, []);
+  useEffect(() => {
+    // Сначала поднимаем сохранённые акции (мгновенно), потом освежаем из сети.
+    hydrate().finally(loadPromotions);
+  }, []);
 
-  // Home is a tab that stays mounted, so the mount fetch alone would keep
-  // stale promos until a cold start. Refetch whenever the app returns to the
-  // foreground so admin edits reach customers without restarting the app.
+  // Home остаётся смонтированным, поэтому одного запроса при монтировании мало:
+  // правки из админки дошли бы только после холодного старта. Освежаем акции
+  // каждый раз, когда приложение возвращается из фона.
   useEffect(() => {
     let prev = AppState.currentState;
     const sub = AppState.addEventListener('change', (next) => {
@@ -90,28 +107,46 @@ export default function BannerCarousel() {
   const slides = promotions.length ? promotions : FALLBACK;
   const count = slides.length;
 
-  // A refetch can return fewer promos than before; don't point past the end.
+  // После обновления акций их может стать меньше — не указываем за конец списка.
   useEffect(() => {
     if (idx >= count) {
       setIdx(0);
-      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      safeScroll(() => listRef.current?.scrollToOffset({ offset: 0, animated: false }));
     }
   }, [idx, count]);
 
-  // Auto-advance, looping back to the first slide. A timeout per slide rather
-  // than one fixed interval, because each promotion carries its own duration
-  // (and a manual swipe now restarts the wait instead of inheriting whatever
-  // was left of a shared tick).
-  const currentDuration = slideDurationMs(slides[idx], AUTOPLAY_MS);
+  // Пока ничего не пришло и кеш пуст — держим скелет ровно того же размера,
+  // что и баннер, чтобы контент под ним не прыгал при появлении карусели.
+  const showSkeleton = loading && !promotions.length;
+
+  // Auto-advance, looping back to the first slide.
+  //
+  // Сколько висит именно этот слайд. Раньше интервал был один на всю карусель:
+  // пятисекундный ролик и пятнадцатисекундный получали одинаковые 6 секунд —
+  // первый успевал зациклиться, второй обрывался на середине. Теперь длительность
+  // задаёт админ у каждой акции (`durationSec`), а константа остаётся запасной.
+  const slideMs = slideDurationMs(slides[idx]);
+
+  // Таймер — одноразовый setTimeout, который перевзводится при смене слайда:
+  // интервал не умеет менять шаг под каждую акцию.
+  //
+  // `isFocused` в зависимостях — не косметика. Home живёт во вкладке и остаётся
+  // смонтированным, когда пользователь ушёл в «Меню» или «Профиль». Раньше
+  // таймер продолжал крутить слайды в фоне: `idx` смещался каждые 6 секунд,
+  // вместе с ним ехало окно живых слайдов, и плееры пересоздавались бесконечно.
+  // Каждый ExoPlayer — это буферы в Java-куче и декодер в графической памяти,
+  // поэтому приложение постоянно пилило 110↔255 МБ при лимите кучи 256 МБ.
+  // Достаточно было проскроллить меню, чтобы добрать недостающее — и процесс
+  // падал с OutOfMemoryError в случайном потоке.
   useEffect(() => {
-    if (count <= 1) return undefined;
+    if (count <= 1 || !isFocused) return undefined;
     const id = setTimeout(() => {
       const next = (idx + 1) % count;
-      listRef.current?.scrollToIndex({ index: next, animated: true });
       setIdx(next);
-    }, currentDuration);
+      safeScroll(() => listRef.current?.scrollToIndex({ index: next, animated: true }));
+    }, slideMs);
     return () => clearTimeout(id);
-  }, [idx, count, currentDuration]);
+  }, [count, isFocused, idx, slideMs]);
 
   const onMomentumEnd = useCallback((e) => {
     const i = Math.round(e.nativeEvent.contentOffset.x / SLIDE_W);
@@ -119,6 +154,14 @@ export default function BannerCarousel() {
   }, [idx]);
 
   const getItemLayout = (_, i) => ({ length: SLIDE_W, offset: SLIDE_W * i, index: i });
+
+  if (showSkeleton) {
+    return (
+      <View style={styles.wrap}>
+        <MediaSkeleton style={styles.card} radius={Radius.xl} />
+      </View>
+    );
+  }
 
   if (!count) return null;
 
@@ -134,34 +177,71 @@ export default function BannerCarousel() {
         getItemLayout={getItemLayout}
         onMomentumScrollEnd={onMomentumEnd}
         onScrollToIndexFailed={() => {}}
+        // На Android FlatList по умолчанию включает removeClippedSubviews.
+        // Внутри слайдов живёт expo-video: отцепление живого VideoView от
+        // родителя роняет процесс без JS-ошибки. Явно выключаем.
+        removeClippedSubviews={false}
         renderItem={({ item, index }) => {
           const { title, desc } = pickLang(item, lang);
           const badgeColor = item.badge ? BADGE_COLORS[item.badge] : null;
+          // Видеодекодер выделяется на КАЖДЫЙ смонтированный плеер, а `paused`
+          // его не освобождает: остановленный ExoPlayer продолжает держать
+          // буферы. Поэтому живым делаем ровно один слайд — тот, что на экране,
+          // и только пока вкладка в фокусе. Соседи показывают скелет.
+          //
+          // Раньше здесь было окно ±1 (три плеера разом). Втроём они держали
+          // кучу у самого потолка, и любое лишнее выделение памяти — скролл
+          // меню, смена языка — роняло процесс.
+          const live = isFocused && index === idx;
           return (
             <View style={styles.slide}>
               <View style={styles.card}>
-                {item.imageUrl ? (
-                  <PromoMedia
-                    uri={item.imageUrl}
-                    mediaType={item.mediaType}
-                    paused={index !== idx}
-                    style={[StyleSheet.absoluteFill, frameTransform(item)]}
-                    muted
-                    // "contain", like the website: the admin's zoom is tuned
-                    // against the whole media fitted in the frame. "cover"
-                    // pre-enlarges it, so a vertical video at zoom 3 came out
-                    // ~8x bigger than on the site.
-                    contentFit="contain"
-                    resizeMode="contain"
-                  />
+                {item.imageUrl && live ? (
+                  <>
+                    {/* Размытая подложка того же фото — закрывает поля, которые
+                        оставляет contain. Как на сайте и в превью админки.
+                        Только для картинок: сайт не умеет рисовать видео фоном,
+                        там поля остаются цвета карточки — здесь то же самое. */}
+                    {item.mediaType === 'image' && (
+                      <CachedImage
+                        uri={item.imageUrl}
+                        style={[StyleSheet.absoluteFill, styles.backdrop]}
+                        contentFit="cover"
+                        blurRadius={24}
+                      />
+                    )}
+                    {/* Кадрирование из админки: та же модель, что на сайте и в
+                        превью «Sitede nasıl görünür» — медиа целиком (contain),
+                        затем сдвиг в % рамки и масштаб. Раньше здесь был cover
+                        без кадрирования вовсе: админ подбирал масштаб по сайту,
+                        а приложение его игнорировало. Видео с белыми полями,
+                        зашитыми прямо в файл, на сайте обрезалось масштабом
+                        1.5, а в приложении показывало эти поля по углам. */}
+                    <PromoMedia
+                      uri={item.imageUrl}
+                      posterUrl={item.posterUrl}
+                      mediaType={item.mediaType}
+                      paused={false}
+                      style={[
+                        StyleSheet.absoluteFill,
+                        { transform: imageFrameTransform(item, CARD_W, CARD_H) },
+                      ]}
+                      muted
+                      contentFit="contain"
+                    />
+                  </>
+                ) : item.imageUrl ? (
+                  <MediaSkeleton style={StyleSheet.absoluteFill} radius={0} showLogo={false} />
                 ) : (
                   <View style={[StyleSheet.absoluteFill, styles.fallback, { backgroundColor: item.color || Colors.primary }]}>
                     <Text style={{ fontSize: 64 }}>{item.emoji || '🍣'}</Text>
                   </View>
                 )}
 
-                {/* Dark veil for legible text over any image/video */}
-                <View style={styles.overlay} />
+                {/* Затемнение — только когда поверх медиа есть текст.
+                    Без этого условия имиджевые баннеры без подписи выглядели
+                    приглушёнными, будто у экрана убавили яркость. */}
+                {(title || desc) && <View style={styles.overlay} />}
 
                 <View style={styles.content}>
                   {item.badge && (
@@ -194,6 +274,10 @@ export default function BannerCarousel() {
   );
 }
 
+// Шапка Home перерисовывается при смене активной категории; баннер от этого
+// не зависит и пересобираться не должен.
+export default memo(BannerCarousel);
+
 const styles = StyleSheet.create({
   wrap: {
     paddingTop: Spacing.sm,
@@ -203,7 +287,7 @@ const styles = StyleSheet.create({
   },
   card: {
     height: CARD_H,
-    marginHorizontal: Spacing.md,
+    marginHorizontal: H_MARGIN,
     borderRadius: Radius.xl,
     overflow: 'hidden',
     backgroundColor: Colors.primaryLight,
@@ -212,6 +296,11 @@ const styles = StyleSheet.create({
   fallback: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Чуть больше карточки, как на сайте: иначе размытие тает к краям и по
+  // периметру проступает светлая рамка.
+  backdrop: {
+    transform: [{ scale: 1.15 }],
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

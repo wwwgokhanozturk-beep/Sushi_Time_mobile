@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors, Spacing, Radius, Shadows } from "../core/theme";
 
-const MOUNT = require("../../assets/mountain-bg.png");
+const MOUNT = require("../../assets/mountain-bg.jpg");
 
 /**
  * Shared auth layout: mountain background + soft scrim, safe-area aware,

@@ -4,7 +4,8 @@ import { WebView } from 'react-native-webview';
 import { MAPBOX_TOKEN, RESTAURANT_LOGO_URL } from '../core/constants';
 
 /**
- * MapboxMap — карта на Mapbox GL JS через WebView (drop-in замена LeafletMap).
+ * MapboxMap — карта на Mapbox GL JS через WebView. Единственная карта в
+ * приложении: используется и в трекинге заказа, и в выборе адреса.
  * Дизайн в стиле сайта: фирменный красный пин ресторана, красный пульсирующий кружок юзера.
  *
  * Props:

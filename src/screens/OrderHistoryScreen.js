@@ -16,9 +16,10 @@ import { useProfileStore } from '../store/profileStore';
 import { StatusBadge, EmptyState, ErrorState, PrimaryButton, SkeletonOrderList } from '../components/SharedWidgets';
 import { useCartStore } from '../store/cartStore';
 import { formatPrice } from '../utils/formatPrice';
+import { formatOrderDate } from '../utils/formatDate';
 
 export default function OrderHistoryScreen({ navigation }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { orders, loading, error, loadOrders } = useOrderStore();
   const phone = useProfileStore((s) => s.phone);
@@ -59,16 +60,7 @@ export default function OrderHistoryScreen({ navigation }) {
     );
   }
 
-  const formatDate = (dateStr) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  };
+  const formatDate = (dateStr) => formatOrderDate(dateStr, i18n.language);
 
   return (
     <View style={styles.container}>

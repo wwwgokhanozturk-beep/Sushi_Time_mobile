@@ -13,7 +13,8 @@ import { Asset } from 'expo-asset';
 const SPLASH_BG = require('../../assets/splash_bg.jpg');
 
 // ─── Greeting sequence ────────────────────────────────────────────────────────
-const GREETINGS = ['Hoş geldiniz', 'Welcome', 'Добро пожаловать'];
+// Порядок: английский → русский → турецкий.
+const GREETINGS = ['Welcome', 'Добро пожаловать', 'Hoş geldiniz'];
 
 // ─── Timing constants (ms) ────────────────────────────────────────────────────
 const INITIAL_DELAY    = 200;   // brief pause before first text appears

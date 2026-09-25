@@ -17,12 +17,13 @@ import { useProfileStore } from '../store/profileStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { PrimaryButton } from '../components/SharedWidgets';
 import { formatPrice } from '../utils/formatPrice';
+import { pickLocalized } from '../utils/localized';
 import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, SERVICE_FEE, TIP_OPTIONS } from '../core/constants';
 // import httpClient from '../core/httpClient'; // used only by disabled online-payment branch
 import { usePromotionStore } from '../store/promotionStore';
 
 export default function CheckoutScreen({ navigation }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const items = useCartStore((s) => s.items);
   const clearCart = useCartStore((s) => s.clearCart);
@@ -34,6 +35,19 @@ export default function CheckoutScreen({ navigation }) {
   const districts = useSettingsStore((s) => s.districts);
   const loadDistrictMinimums = useSettingsStore((s) => s.loadDistrictMinimums);
   const districtMinFor = useSettingsStore((s) => s.districtMinFor);
+
+  // Второй рубеж после корзины: на экран можно попасть не только кнопкой —
+  // например, вернувшись по стеку назад после выхода из аккаунта. Оформление
+  // без аккаунта не должно начинаться вообще, поэтому уводим на вход сразу,
+  // а не показываем форму, которая всё равно упрётся в ошибку отправки.
+  //
+  // Ждём `loaded`: профиль поднимается из AsyncStorage асинхронно, и до этого
+  // момента `isLoggedIn` равен false у ВСЕХ, включая вошедших. Без этой
+  // проверки холодный старт сразу на оформлении выкидывал на вход человека,
+  // который на самом деле авторизован.
+  useEffect(() => {
+    if (profile.loaded && !profile.isLoggedIn) navigation.replace('Login');
+  }, [profile.loaded, profile.isLoggedIn, navigation]);
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -321,7 +335,7 @@ export default function CheckoutScreen({ navigation }) {
           {items.map((ci) => (
             <View key={ci.menuItem._id} style={styles.summaryItem}>
               <Text style={[Typography.body, { flex: 1 }]} numberOfLines={1}>
-                {ci.quantity}× {ci.menuItem.name}
+                {ci.quantity}× {pickLocalized(ci.menuItem, 'name', i18n.language)}
               </Text>
               <Text style={Typography.bodySmall}>
                 {formatPrice(ci.menuItem.price * ci.quantity)}

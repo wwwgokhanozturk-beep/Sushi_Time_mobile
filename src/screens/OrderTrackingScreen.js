@@ -17,9 +17,10 @@ import { StatusBadge, ErrorState } from '../components/SharedWidgets';
 import { formatPrice } from '../utils/formatPrice';
 import { useOrderTracking } from '../utils/useOrderTracking';
 import { RESTAURANT_LAT, RESTAURANT_LNG } from '../core/constants';
+import { formatOrderDate } from '../utils/formatDate';
 
 export default function OrderTrackingScreen({ route, navigation }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { orderId } = route.params;
   const { currentOrder, loading, error, loadOrderById } = useOrderStore();
@@ -58,16 +59,7 @@ export default function OrderTrackingScreen({ route, navigation }) {
   if (!order) return null;
 
   const shortId = order._id.slice(-6).toUpperCase();
-  const formatDate = (dateStr) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  };
+  const formatDate = (dateStr) => formatOrderDate(dateStr, i18n.language);
 
   const steps = [
     { key: 'pending', label: t('order_placed'), emoji: '📋' },

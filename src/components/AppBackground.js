@@ -1,7 +1,9 @@
 import React from 'react';
 import { ImageBackground, StyleSheet, View } from 'react-native';
 
-const bg = require('../../assets/mountain-bg.png');
+// JPEG вместо PNG: картинка полностью непрозрачная, альфа-канал не нужен,
+// а вес падает с 929 КБ до 142 КБ — это фон, который декодируется при старте.
+const bg = require('../../assets/mountain-bg.jpg');
 
 export default function AppBackground({ children }) {
   return (

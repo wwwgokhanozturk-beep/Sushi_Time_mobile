@@ -58,9 +58,18 @@ export const ApiConstants = {
   orderStatus: (id) => `/orders/${id}/status`,
   promotions: '/promotions',
   settings: '/settings/contact',
+  categoryOrder: '/settings/category-order',
+  // Обложка и подпись каждой категории, заданные админом. Эти же два
+  // справочника читает сайт — из них и берётся общий вид витрины.
+  categoryImages: '/settings/category-images',
+  categoryNames: '/settings/category-names',
+  appVersion: '/settings/app-version',
   businessHours: '/settings/business-hours',
   districtMinimums: '/settings/district-minimums',
   notificationsRegisterToken: '/notifications/register-token',
+  // Удаление аккаунта. Если бэкенд ещё не реализовал этот маршрут, клиент
+  // корректно это переживёт: см. deleteAccount в profileStore.
+  deleteAccount: '/users/me',
   chatMy: '/chat/my',
   chatMyMessages: '/chat/my/messages',
   connectTimeout: 15000,

@@ -37,6 +37,24 @@ export const useSettingsStore = create((set, get) => ({
     }
   },
 
+  // Какая сборка сейчас актуальна и ниже какой — уже не поддерживается.
+  // Ответ намеренно необязательный: если запрос не прошёл, appVersion
+  // остаётся null и баннер обновления просто не показывается — пользователь
+  // не должен упереться в стену из-за недоступной сети.
+  appVersion: null,
+  appVersionLoaded: false,
+
+  loadAppVersion: async () => {
+    if (get().appVersionLoaded) return;
+    try {
+      const res = await httpClient.get(ApiConstants.appVersion);
+      set({ appVersion: res.data?.data?.appVersion || null, appVersionLoaded: true });
+    } catch (e) {
+      console.warn('[SushiTime] loadAppVersion error:', e.message);
+      set({ appVersionLoaded: true });
+    }
+  },
+
   // Минимальная сумма заказа по районам Алании (задаётся в админке)
   districts: [],           // [{ name, minOrder }]
   districtsLoaded: false,

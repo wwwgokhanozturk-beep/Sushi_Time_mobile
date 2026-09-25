@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
   View,
   Text,
-  Image,
   FlatList,
   TouchableOpacity,
   StyleSheet,
@@ -11,22 +10,87 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, Radius, Shadows } from '../core/theme';
 import { useCartStore, selectTotalPrice, selectTotalItems } from '../store/cartStore';
+import { useMenuStore } from '../store/menuStore';
+import { useProfileStore } from '../store/profileStore';
 import { PrimaryButton, EmptyState } from '../components/SharedWidgets';
 import DeliveryMinBanner from '../components/DeliveryMinBanner';
+import CartExtras from '../components/CartExtras';
+import CachedImage from '../components/CachedImage';
 import { formatPrice } from '../utils/formatPrice';
+import { pickLocalized } from '../utils/localized';
 import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, SERVICE_FEE } from '../core/constants';
 
 export default function CartScreen({ navigation }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const items = useCartStore((s) => s.items);
   const clearCart = useCartStore((s) => s.clearCart);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const addToCart = useCartStore((s) => s.addToCart);
   const totalPrice = useCartStore(selectTotalPrice);
   const totalItems = useCartStore(selectTotalItems);
+  // Заказ привязывается к аккаунту: без него некуда положить историю, нечем
+  // подтвердить владельца при отмене и некому слать пуш о статусе. Поэтому
+  // checkout закрыт для гостя — раньше он проходил его целиком и упирался в
+  // ошибку уже на отправке заказа.
+  const isLoggedIn = useProfileStore((s) => s.isLoggedIn);
+
+  // Блок допродажи берёт товары из меню. Обычно оно уже загружено с Home,
+  // но в корзину можно попасть и первым экраном — тогда поднимаем сами.
+  const menuItems = useMenuStore((s) => s.items);
+  const hydrateMenu = useMenuStore((s) => s.hydrate);
+  const loadMenu = useMenuStore((s) => s.loadMenu);
+
+  useEffect(() => {
+    if (!menuItems.length) hydrateMenu().finally(() => loadMenu());
+  }, []);
 
   const deliveryFee = totalPrice >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const grandTotal = totalPrice + deliveryFee + SERVICE_FEE;
+
+  const renderItem = useCallback(
+    ({ item }) => {
+      const lineTotal = formatPrice(item.menuItem.price * item.quantity);
+      return (
+        <View style={styles.tile}>
+          <View style={styles.tileImage}>
+            {item.menuItem.imageUrl ? (
+              <CachedImage uri={item.menuItem.imageUrl} style={styles.img} contentFit="cover" cachePolicy="disk" />
+            ) : (
+              <Text style={{ fontSize: 32 }}>🍣</Text>
+            )}
+          </View>
+
+          <View style={styles.tileInfo}>
+            <Text style={styles.tileName} numberOfLines={2}>{pickLocalized(item.menuItem, 'name', i18n.language)}</Text>
+            <Text style={styles.unitPrice}>{formatPrice(item.menuItem.price)}</Text>
+          </View>
+
+          <View style={styles.tileRight}>
+            <Text style={styles.lineTotal}>{lineTotal}</Text>
+            <View style={styles.qtyRow}>
+              <TouchableOpacity
+                style={styles.qtyBtn}
+                onPress={() => updateQuantity(item.menuItem._id, item.quantity - 1)}
+                hitSlop={4}
+              >
+                <Text style={styles.qtyBtnText}>−</Text>
+              </TouchableOpacity>
+              <Text style={styles.qtyValue}>{item.quantity}</Text>
+              <TouchableOpacity
+                style={styles.qtyBtn}
+                onPress={() => updateQuantity(item.menuItem._id, item.quantity + 1)}
+                hitSlop={4}
+              >
+                <Text style={styles.qtyBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      );
+    },
+    [updateQuantity]
+  );
 
   if (items.length === 0) {
     return (
@@ -52,72 +116,43 @@ export default function CartScreen({ navigation }) {
       <View style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}>
         <Text style={Typography.heading2} numberOfLines={1}>{t('my_cart')}</Text>
         <TouchableOpacity onPress={clearCart} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={{ color: Colors.error, fontWeight: '600', fontSize: 14 }}>{t('clear')}</Text>
+          <Text style={styles.clearBtn}>{t('clear')}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Items */}
+      {/* Items + допродажа под ними */}
       <FlatList
         data={items}
         keyExtractor={(item) => item.menuItem._id}
-        contentContainerStyle={{ padding: Spacing.md }}
-        ItemSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
-        renderItem={({ item }) => {
-          const subtotal = formatPrice(item.menuItem.price * item.quantity);
-          return (
-            <View style={styles.tile}>
-              <View style={styles.tileImage}>
-                {item.menuItem.imageUrl ? (
-                  <Image source={{ uri: item.menuItem.imageUrl }} style={styles.img} />
-                ) : (
-                  <Text style={{ fontSize: 32 }}>🍣</Text>
-                )}
-              </View>
-              <View style={styles.tileInfo}>
-                <Text style={styles.tileName} numberOfLines={1}>
-                  {item.menuItem.name}
-                </Text>
-                <Text style={Typography.bodySmall}>{formatPrice(item.menuItem.price)}</Text>
-              </View>
-              <View style={styles.tileRight}>
-                <Text style={Typography.price}>{subtotal}</Text>
-                <View style={styles.qtyRow}>
-                  <TouchableOpacity
-                    style={styles.qtyBtn}
-                    onPress={() => updateQuantity(item.menuItem._id, item.quantity - 1)}
-                  >
-                    <Text style={styles.qtyBtnText}>−</Text>
-                  </TouchableOpacity>
-                  <Text style={[Typography.heading3, { minWidth: 20, textAlign: 'center' }]}>{item.quantity}</Text>
-                  <TouchableOpacity
-                    style={styles.qtyBtn}
-                    onPress={() => updateQuantity(item.menuItem._id, item.quantity + 1)}
-                  >
-                    <Text style={styles.qtyBtnText}>+</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          );
-        }}
+        renderItem={renderItem}
+        contentContainerStyle={styles.listContent}
+        ItemSeparatorComponent={SEPARATOR}
+        showsVerticalScrollIndicator={false}
+        ListFooterComponent={
+          <CartExtras cartItems={items} menuItems={menuItems} onAdd={addToCart} />
+        }
       />
 
       <DeliveryMinBanner />
 
       {/* Summary */}
-      <View style={styles.summary}>
+      <View style={[styles.summary, { paddingBottom: Spacing.lg }]}>
         <View style={styles.etaRow}>
           <Text style={{ fontSize: 16 }}>🚴</Text>
-          <Text style={styles.etaText} numberOfLines={1}>{t('estimated_delivery')}: 25-35 {t('min_label')}</Text>
+          <Text style={styles.etaText} numberOfLines={1}>
+            {t('estimated_delivery')}: 25-35 {t('min_label')}
+          </Text>
         </View>
         <View style={styles.divider} />
         <View style={styles.summaryRow}>
-          <Text style={[Typography.body, { flexShrink: 1 }]} numberOfLines={1}>{t('subtotal')} ({totalItems} {t('items')})</Text>
+          <Text style={[Typography.body, { flexShrink: 1 }]} numberOfLines={1}>
+            {t('subtotal')} ({totalItems} {t('items')})
+          </Text>
           <Text style={Typography.body}>{formatPrice(totalPrice)}</Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={[Typography.bodySmall, { flexShrink: 1 }]} numberOfLines={1}>{t('delivery_fee')}</Text>
-          <Text style={[Typography.bodySmall, deliveryFee === 0 && { color: Colors.success }]}>
+          <Text style={[Typography.bodySmall, deliveryFee === 0 && styles.freeFee]}>
             {deliveryFee === 0 ? t('free') : formatPrice(deliveryFee)}
           </Text>
         </View>
@@ -136,9 +171,16 @@ export default function CartScreen({ navigation }) {
           <Text style={[Typography.price, { fontSize: 20 }]}>{formatPrice(grandTotal)}</Text>
         </View>
         <View style={{ height: Spacing.sm }} />
+        {!isLoggedIn && (
+          <Text style={styles.authHint} numberOfLines={2}>
+            {t('login_required_hint')}
+          </Text>
+        )}
         <PrimaryButton
-          label={t('proceed_to_checkout')}
-          onPress={() => navigation.navigate('Checkout')}
+          label={isLoggedIn ? t('proceed_to_checkout') : t('sign_in_to_order')}
+          onPress={() =>
+            navigation.navigate(isLoggedIn ? 'Checkout' : 'Login')
+          }
           icon={<Text style={{ color: '#fff' }}>→</Text>}
         />
       </View>
@@ -146,21 +188,38 @@ export default function CartScreen({ navigation }) {
   );
 }
 
+const SEPARATOR = () => <View style={{ height: Spacing.sm }} />;
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  authHint: {
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: Spacing.md,
     paddingBottom: Spacing.md,
     backgroundColor: Colors.background,
     borderBottomWidth: 1,
     borderBottomColor: Colors.divider,
   },
+  clearBtn: { color: Colors.error, fontWeight: '700', fontSize: 14 },
+  listContent: {
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.md,
+  },
+
+  // ── Строка корзины ──
   tile: {
-    flexDirection: "row",
-    padding: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.sm,
     backgroundColor: Colors.cardBg,
     borderRadius: Radius.lg,
     borderWidth: 1,
@@ -170,47 +229,68 @@ const styles = StyleSheet.create({
   tileImage: {
     width: 72,
     height: 72,
-    borderRadius: Radius.lg,
-    overflow: "hidden",
+    borderRadius: Radius.md,
+    overflow: 'hidden',
     backgroundColor: Colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: Colors.divider,
   },
-  img: { width: 72, height: 72, resizeMode: "cover" },
-  tileInfo: { flex: 1, marginLeft: Spacing.md, justifyContent: "center" },
+  img: { width: '100%', height: '100%' },
+  tileInfo: { flex: 1, marginLeft: Spacing.md, justifyContent: 'center', gap: 2 },
   tileName: {
-    ...Typography.heading3,
-    fontSize: 16,
-    fontWeight: "800",
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.textPrimary,
     letterSpacing: -0.3,
+    lineHeight: 19,
   },
-  tileRight: { alignItems: "flex-end", justifyContent: "space-between" },
+  unitPrice: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Colors.textSecondary,
+  },
+  tileRight: { alignItems: 'flex-end', gap: Spacing.sm, marginLeft: Spacing.sm },
+  lineTotal: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: Colors.primary,
+    letterSpacing: -0.4,
+  },
   qtyRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.sm,
-    marginTop: Spacing.sm,
   },
   qtyBtn: {
-    width: 34,
-    height: 34,
+    width: 32,
+    height: 32,
     borderRadius: Radius.full,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.divider,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   qtyBtnText: {
-    fontSize: 18,
-    fontWeight: "800",
+    fontSize: 17,
+    fontWeight: '800',
     color: Colors.primary,
     marginTop: -2,
   },
+  qtyValue: {
+    minWidth: 20,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+  },
+
+  // ── Итоги ──
   summary: {
-    padding: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
     backgroundColor: Colors.surface,
     borderTopLeftRadius: Radius.xl + 12,
     borderTopRightRadius: Radius.xl + 12,
@@ -219,20 +299,21 @@ const styles = StyleSheet.create({
     ...Shadows.lg,
   },
   summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginVertical: 4,
   },
+  freeFee: { color: Colors.success, fontWeight: '800' },
   etaRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.md,
     marginBottom: Spacing.sm,
   },
   etaText: {
     ...Typography.bodySmall,
-    fontWeight: "700",
+    fontWeight: '700',
     color: Colors.textPrimary,
     flexShrink: 1,
   },
@@ -240,7 +321,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     marginTop: Spacing.sm,
-    fontStyle: "italic",
+    fontStyle: 'italic',
   },
   divider: {
     height: 1,

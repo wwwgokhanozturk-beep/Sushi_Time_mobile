@@ -21,5 +21,14 @@ yarn-error.*
 .DS_Store
 
 # local env
+.env
 .env*.local
 .env.local
+
+# build output
+dist/
+.expo/
+web-build/
+
+# Backend repo klonlangan shu papka ichiga — mobil repoga tushmasin
+Sushi_Time-backend/

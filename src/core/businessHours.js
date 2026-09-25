@@ -25,7 +25,7 @@ function zonedParts(date) {
   };
 }
 
-export function emptyWeek() {
+function emptyWeek() {
   return Array.from({ length: 7 }, () => ({ closed: false, open: '10:00', close: '23:00' }));
 }
 

@@ -1,9 +1,16 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { memo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import CachedImage from './CachedImage';
 import { Colors, Spacing, Radius, Shadows } from '../core/theme';
 import { formatPrice } from '../utils/formatPrice';
 import { imageFrameTransform } from '../utils/imageFrame';
+import { pickLocalized } from '../utils/localized';
 import { useTranslation } from 'react-i18next';
+
+// Высота строки меню зафиксирована, чтобы список мог считать позиции заранее
+// (getItemLayout): без этого прыжок к дальней категории промахивается мимо цели.
+// 116 — размер фото, 14×2 — вертикальные отступы карточки.
+export const LIST_ROW_HEIGHT = 144;
 
 // ─── Gradient vignette: blends image edges into card bg ──────────────────────
 // Stacks semi-transparent Views with exponential opacity — approximates CSS gradient.
@@ -85,15 +92,18 @@ function StarRating({ rating = 0, size = 11 }) {
 }
 
 // ─── Main card ────────────────────────────────────────────────────────────────
-export default function SushiCard({ item, onTap, onAdd, mode = 'grid' }) {
+// mode по умолчанию — 'list': это единственный режим, который приложение
+// реально использует (Home и Menu). Раньше по умолчанию был 'grid' — тяжёлая
+// ветка с 28 полупрозрачными View для имитации градиента, и любой новый
+// <SushiCard item={x} /> без явного mode молча получал бы именно её.
+function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
   const { i18n } = useTranslation();
   const price = formatPrice(item.price);
 
-  const lang = i18n.language;
-  const description =
-    (lang === 'ru' && item.description_ru) ? item.description_ru
-    : (lang === 'tr' && item.description_tr) ? item.description_tr
-    : item.description;
+  // Название тоже переводится — как на сайте. Раньше бралось сырое `item.name`,
+  // и в русской версии рядом с переведённым составом стояло турецкое название.
+  const name = pickLocalized(item, 'name', i18n.language);
+  const description = pickLocalized(item, 'description', i18n.language);
 
   const pseudoRating = item.rating || (3.5 + ((item.price * 7 + item.calories) % 15) / 10);
 
@@ -106,7 +116,7 @@ export default function SushiCard({ item, onTap, onAdd, mode = 'grid' }) {
 
         {/* LEFT — текст */}
         <View style={styles.listContent}>
-          <Text style={styles.listName} numberOfLines={2}>{item.name}</Text>
+          <Text style={styles.listName} numberOfLines={2}>{name}</Text>
 
           {/* Цена + зачёркнутая */}
           <View style={styles.listPriceRow}>
@@ -117,7 +127,7 @@ export default function SushiCard({ item, onTap, onAdd, mode = 'grid' }) {
           </View>
 
           {description ? (
-            <Text style={styles.listDesc} numberOfLines={3}>{description}</Text>
+            <Text style={styles.listDesc} numberOfLines={2}>{description}</Text>
           ) : null}
         </View>
 
@@ -126,10 +136,15 @@ export default function SushiCard({ item, onTap, onAdd, mode = 'grid' }) {
           {/* Клиппинг-контейнер: зум/смещение не вылезают за рамку */}
           <View style={styles.listImgClip}>
             {item.imageUrl ? (
-              <Image
-                source={{ uri: item.imageUrl }}
+              <CachedImage
+                uri={item.imageUrl}
                 style={[styles.listImage, { transform: imageFrameTransform(item, 116, 116) }]}
-                resizeMode="cover"
+                contentFit="cover"
+                // Список из 50+ карточек: memory-кеш expo-image
+                // разбухает до сотен МБ и роняет Android по OOM.
+                // Держим фото только на диске — декодированный bitmap
+                // живёт лишь пока строка на экране.
+                cachePolicy="disk"
               />
             ) : (
               <View style={[styles.listImage, styles.listPlaceholder]}>
@@ -161,7 +176,7 @@ export default function SushiCard({ item, onTap, onAdd, mode = 'grid' }) {
     <TouchableOpacity activeOpacity={0.75} onPress={onTap} style={styles.card}>
       <View style={styles.imgContainer}>
         {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} style={styles.image} resizeMode="contain" />
+          <CachedImage uri={item.imageUrl} style={styles.image} contentFit="contain" />
         ) : (
           <View style={styles.placeholder}>
             <Text style={{ fontSize: 48 }}>🍣</Text>
@@ -198,7 +213,7 @@ export default function SushiCard({ item, onTap, onAdd, mode = 'grid' }) {
       </View>
 
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.name} numberOfLines={1}>{name}</Text>
         <StarRating rating={pseudoRating} />
         {description ? (
           <Text style={styles.description} numberOfLines={2}>{description}</Text>
@@ -362,6 +377,7 @@ const styles = StyleSheet.create({
 
   // ── List card ─────────────────────────────────────────────────────────────
   listCard: {
+    height: LIST_ROW_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     // Translucent so the app background design shows through the menu rows.
@@ -447,3 +463,10 @@ const styles = StyleSheet.create({
     ...Shadows.glow,
   },
 });
+
+// Ряды меню перерисовываются на каждый скролл-тик родителя. Сравниваем только
+// то, что реально влияет на вид карточки: сам товар (по ссылке) и режим.
+// Без этого 200+ карточек пересобирались при любом изменении состояния экрана.
+export default memo(SushiCard, (prev, next) =>
+  prev.item === next.item && prev.mode === next.mode
+);

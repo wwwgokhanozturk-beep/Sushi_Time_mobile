@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  Image,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
@@ -14,20 +13,28 @@ import { Colors, Typography, Spacing, Radius, Shadows } from '../core/theme';
 import { useMenuStore } from '../store/menuStore';
 import { useCartStore } from '../store/cartStore';
 import { PrimaryButton } from '../components/SharedWidgets';
+import CachedImage from '../components/CachedImage';
 import { formatPrice } from '../utils/formatPrice';
 import { imageFrameTransform } from '../utils/imageFrame';
+import { pickLocalized } from '../utils/localized';
+import { categoryLabel } from '../utils/categories';
 
 const { width } = Dimensions.get('window');
 
 export default function ItemDetailScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { itemId } = route.params;
+  const { itemId, item: passedItem } = route.params;
   const items = useMenuStore((s) => s.items);
+  // Название раздела здесь то же, что в витрине и на сайте: имя из админки,
+  // иначе зашитый перевод.
+  const categoryNames = useMenuStore((s) => s.categoryNames);
   const addToCart = useCartStore((s) => s.addToCart);
   const [quantity, setQuantity] = useState(1);
 
-  const item = items.find((i) => i._id === itemId);
+  // Список передаёт сам товар вместе с id: экран рисуется сразу, не дожидаясь
+  // поиска по всему меню (а при холодном старте по ссылке — ищем как раньше).
+  const item = passedItem || items.find((i) => i._id === itemId);
   if (!item) {
     return (
       <View style={styles.container}>
@@ -39,15 +46,10 @@ export default function ItemDetailScreen({ route, navigation }) {
   const price = formatPrice(item.price);
   const totalPrice = formatPrice(item.price * quantity);
 
-  // Select description and ingredients based on current language
-  const lang = i18n.language;
-  const description = (lang === 'ru' && item.description_ru) ? item.description_ru
-    : (lang === 'tr' && item.description_tr) ? item.description_tr
-    : item.description;
-
-  const ingredients = (lang === 'ru' && item.ingredients_ru?.length) ? item.ingredients_ru
-    : (lang === 'tr' && item.ingredients_tr?.length) ? item.ingredients_tr
-    : item.ingredients;
+  // Description and ingredients follow the current language, with a fallback
+  // to the base field when a translation is missing.
+  const description = pickLocalized(item, 'description', i18n.language);
+  const ingredients = pickLocalized(item, 'ingredients', i18n.language);
 
   const handleAdd = () => {
     for (let i = 0; i < quantity; i++) addToCart(item);
@@ -61,9 +63,11 @@ export default function ItemDetailScreen({ route, navigation }) {
         <View style={[styles.imageSection, { paddingTop: insets.top + Spacing.sm }]}>
           <View style={styles.imageContainer}>
             {item.imageUrl ? (
-              <Image
-                source={{ uri: item.imageUrl }}
+              <CachedImage
+                uri={item.imageUrl}
                 style={[styles.image, { transform: imageFrameTransform(item, width - Spacing.md * 2, width - Spacing.md * 2) }]}
+                contentFit="cover"
+                priority="high"
               />
             ) : (
               <View style={styles.placeholder}>
@@ -88,7 +92,7 @@ export default function ItemDetailScreen({ route, navigation }) {
         {/* Details */}
         <View style={styles.details}>
           <View style={styles.titleRow}>
-            <Text style={[Typography.heading2, { flex: 1 }]}>{item.name}</Text>
+            <Text style={[Typography.heading2, { flex: 1 }]}>{pickLocalized(item, 'name', i18n.language)}</Text>
             <Text style={[Typography.price, { fontSize: 22 }]}>{price}</Text>
           </View>
 
@@ -102,7 +106,7 @@ export default function ItemDetailScreen({ route, navigation }) {
             </View>
             <View style={[styles.metaChip, { backgroundColor: Colors.primary + '20', borderColor: 'transparent' }]}>
               <Text style={[styles.metaText, { color: Colors.primary }]}>
-                {t(`cat_${item.category.toLowerCase()}`, { defaultValue: item.category.charAt(0).toUpperCase() + item.category.slice(1) })}
+                {categoryLabel(item.category, categoryNames, i18n.language, t)}
               </Text>
             </View>
           </View>

@@ -73,21 +73,6 @@ export function ErrorState({ message, onRetry }) {
   );
 }
 
-// ── Section Header ─────────────────────────────────────────────
-export function SectionHeader({ title, actionLabel, onAction }) {
-  return (
-    <View style={styles.sectionRow}>
-      <Text style={[Typography.heading3, { flexShrink: 1 }]} numberOfLines={1}>{title}</Text>
-      {actionLabel && (
-        <TouchableOpacity onPress={onAction} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.sectionAction}>{actionLabel}</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-}
-
-// ── Status Badge ───────────────────────────────────────────────
 export function StatusBadge({ status }) {
   const colorMap = {
     pending: Colors.warning,
@@ -161,18 +146,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
     borderWidth: 1,
     borderColor: Colors.divider,
-  },
-  sectionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-  },
-  sectionAction: {
-    color: Colors.primary,
-    fontWeight: '700',
-    fontSize: 14,
   },
   badge2: {
     paddingHorizontal: Spacing.sm,

@@ -5,16 +5,22 @@ import {
   TextInput,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
   Alert,
   StyleSheet,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, Radius, Shadows } from '../core/theme';
+import Constants from 'expo-constants';
 import { useProfileStore } from '../store/profileStore';
 import { useOrderStore } from '../store/orderStore';
 import { PrimaryButton } from '../components/SharedWidgets';
-import { formatPrice } from '../utils/formatPrice';
+
+// Версия сборки, а не вписанная руками строка: раньше здесь висело v1.0.0,
+// когда в сторе уже лежала 1.1.7, и по «О приложении» нельзя было понять,
+// какую сборку держит в руках пользователь, приславший баг.
+const APP_VERSION = Constants.expoConfig?.version || '—';
 
 export default function ProfileScreen({ navigation }) {
   const { t } = useTranslation();
@@ -22,6 +28,7 @@ export default function ProfileScreen({ navigation }) {
   const profile = useProfileStore();
   const isLoggedIn = useProfileStore((s) => s.isLoggedIn);
   const logout = useProfileStore((s) => s.logout);
+  const deleteAccount = useProfileStore((s) => s.deleteAccount);
   const orders = useOrderStore((s) => s.orders);
   const loadOrders = useOrderStore((s) => s.loadOrders);
 
@@ -35,6 +42,7 @@ export default function ProfileScreen({ navigation }) {
   const [lat, setLat] = useState(null);
   const [lng, setLng] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     profile.loadProfile();
@@ -54,6 +62,40 @@ export default function ProfileScreen({ navigation }) {
       setLng(profile.longitude ?? null);
     }
   }, [profile.loaded]);
+
+  // Удаление профиля: сначала подтверждение, затем сервер + локальная очистка.
+  // Пользователю сообщаем ровно то, что произошло, — если сервер аккаунт не
+  // удалил, писать «аккаунт удалён» нельзя.
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t('delete_account'),
+      t('delete_account_confirm'),
+      [
+        { text: t('cancel_action'), style: 'cancel' },
+        {
+          text: t('delete'),
+          style: 'destructive',
+          onPress: async () => {
+            if (deleting) return;
+            setDeleting(true);
+            let result = { server: 'failed' };
+            try {
+              result = await deleteAccount();
+            } finally {
+              setDeleting(false);
+            }
+            setEditing(false);
+            Alert.alert(
+              t('delete_account'),
+              result.server === 'deleted' || result.server === 'skipped'
+                ? t('delete_account_done')
+                : t('delete_account_failed')
+            );
+          },
+        },
+      ]
+    );
+  };
 
   const handleSave = async () => {
     await profile.updateProfile({
@@ -277,7 +319,7 @@ export default function ProfileScreen({ navigation }) {
           style={styles.linkTile}
           activeOpacity={0.7}
           onPress={() =>
-            Alert.alert(t('app_title'), `v1.0.0\n${t('about_desc')}`)
+            Alert.alert(t('app_title'), `v${APP_VERSION}\n${t('about_desc')}`)
           }
         >
           <Text style={{ fontSize: 20 }}>ℹ️</Text>
@@ -293,6 +335,28 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Удаление профиля — отдельным блоком, чтобы не нажать случайно.
+          Гостю блок не показываем: удалять нечего, а рядом с «Войти» и
+          «Создать аккаунт» он читался как «удалить приложение». */}
+      {isLoggedIn && (
+      <View style={styles.section}>
+        <Text style={Typography.heading3} numberOfLines={1}>{t('danger_zone')}</Text>
+        <TouchableOpacity
+          style={[styles.linkTile, styles.dangerTile]}
+          activeOpacity={0.7}
+          onPress={handleDeleteAccount}
+          disabled={deleting}
+        >
+          <Text style={{ fontSize: 20 }}>🗑️</Text>
+          <Text style={[styles.dangerText, deleting && { opacity: 0.5 }]} numberOfLines={1}>
+            {t('delete_account')}
+          </Text>
+          {deleting && <ActivityIndicator size="small" color={Colors.error} />}
+        </TouchableOpacity>
+        <Text style={styles.dangerHint}>{t('delete_account_confirm')}</Text>
+      </View>
+      )}
 
       <View style={{ height: Spacing.xxl }} />
     </ScrollView>
@@ -397,5 +461,20 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.divider,
+  },
+  dangerTile: {
+    borderBottomWidth: 0,
+    gap: Spacing.md,
+  },
+  dangerText: {
+    ...Typography.body,
+    flex: 1,
+    color: Colors.error,
+    fontWeight: '700',
+  },
+  dangerHint: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.textLight,
   },
 });
