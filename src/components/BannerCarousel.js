@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useIsFocused } from '@react-navigation/native';
-import { Image } from 'expo-image';
 import { Colors, Spacing, Radius, Shadows } from '../core/theme';
 import { usePromotionStore } from '../store/promotionStore';
 import { PromoMedia } from './PromoMedia';
@@ -87,11 +86,6 @@ function BannerCarousel() {
   // пока он занят, тяжёлый список меню отрисовывается на грани, и система
   // вправе убить процесс. Вне фокуса плеер ставим на паузу.
   const isFocused = useIsFocused();
-  // Кадры из видео для размытой подложки: uri -> VideoThumbnail.
-  const [frames, setFrames] = useState({});
-  const onFrame = useCallback((uri, thumb) => {
-    setFrames((prev) => (prev[uri] ? prev : { ...prev, [uri]: thumb }));
-  }, []);
 
   useEffect(() => {
     // Сначала поднимаем сохранённые акции (мгновенно), потом освежаем из сети.
@@ -204,20 +198,13 @@ function BannerCarousel() {
               <View style={styles.card}>
                 {item.imageUrl && live ? (
                   <>
-                    {/* Размытая подложка того же медиа — закрывает поля, которые
+                    {/* Размытая подложка того же фото — закрывает поля, которые
                         оставляет contain. Как на сайте и в превью админки.
-                        У видео это кадр, снятый тем же плеером (см. PromoMedia). */}
+                        Только для картинок: сайт не умеет рисовать видео фоном,
+                        там поля остаются цвета карточки — здесь то же самое. */}
                     {item.mediaType === 'image' && (
                       <CachedImage
                         uri={item.imageUrl}
-                        style={[StyleSheet.absoluteFill, styles.backdrop]}
-                        contentFit="cover"
-                        blurRadius={24}
-                      />
-                    )}
-                    {item.mediaType !== 'image' && frames[item.imageUrl] && (
-                      <Image
-                        source={frames[item.imageUrl]}
                         style={[StyleSheet.absoluteFill, styles.backdrop]}
                         contentFit="cover"
                         blurRadius={24}
@@ -241,7 +228,6 @@ function BannerCarousel() {
                       ]}
                       muted
                       contentFit="contain"
-                      onFrame={(thumb) => onFrame(item.imageUrl, thumb)}
                     />
                   </>
                 ) : item.imageUrl ? (
