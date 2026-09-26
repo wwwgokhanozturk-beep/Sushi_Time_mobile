@@ -62,8 +62,57 @@ function useMediaKind(uri, mediaType) {
   return kind; // undefined only while a probe is still in flight
 }
 
+// Где в MP4 лежит служебный блок moov (оглавление файла). Без него плеер не
+// начнёт показ. Если он в конце («не faststart»), кеширующий загрузчик
+// expo-video ждёт весь файл целиком — на iPhone ролик так и не запускался
+// (первый баннер, 10 МБ). Без кеша плеер сам дочитывает конец по Range, как
+// браузер. Поэтому смотрим первые 4 КБ и кешируем только faststart-файлы.
+// Ответ на URL запоминаем на весь запуск.
+const moovFirstCache = new Map(); // uri -> boolean
+const MOOV_PROBE_BYTES = 4096;
+
+async function isMoovFirst(uri) {
+  if (moovFirstCache.has(uri)) return moovFirstCache.get(uri);
+  let result = false; // не смогли проверить — играем без кеша: медленнее, зато играет
+  try {
+    const res = await fetch(uri, { headers: { Range: `bytes=0-${MOOV_PROBE_BYTES - 1}` } });
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const view = new DataView(bytes.buffer);
+    // Верхнеуровневые блоки: [4 байта размер][4 байта тип]; идём, пока не
+    // встретим moov (оглавление впереди) или mdat (данные впереди).
+    let offset = 0;
+    while (offset + 8 <= bytes.length) {
+      let size = view.getUint32(offset);
+      const type = String.fromCharCode(...bytes.subarray(offset + 4, offset + 8));
+      if (type === 'moov') { result = true; break; }
+      if (type === 'mdat') break;
+      if (size === 1 && offset + 16 <= bytes.length) {
+        size = view.getUint32(offset + 8) * 2 ** 32 + view.getUint32(offset + 12);
+      }
+      if (size < 8) break;
+      offset += size;
+    }
+  } catch {
+    // сеть или сервер без Range — остаёмся на «без кеша»
+  }
+  moovFirstCache.set(uri, result);
+  return result;
+}
+
+function useMoovFirst(uri) {
+  const [moovFirst, setMoovFirst] = useState(moovFirstCache.get(uri));
+  useEffect(() => {
+    if (!uri) return undefined; // не видео — проверять нечего
+    if (moovFirstCache.has(uri)) { setMoovFirst(moovFirstCache.get(uri)); return undefined; }
+    let cancelled = false;
+    isMoovFirst(uri).then((v) => { if (!cancelled) setMoovFirst(v); });
+    return () => { cancelled = true; };
+  }, [uri]);
+  return moovFirst; // undefined, пока проверка идёт
+}
+
 // Plays a promo video. `muted` story = full sound; bubble/banner preview = silent loop.
-function PromoVideo({ uri, style, muted = false, contentFit = 'cover', paused = false }) {
+function PromoVideo({ uri, style, muted = false, contentFit = 'cover', paused = false, useCaching = true }) {
   // `useCaching` кладёт файл в кеш expo-video: первый показ грузится из сети,
   // все следующие — с диска, поэтому белого экрана при повторе больше нет.
   //
@@ -72,7 +121,7 @@ function PromoVideo({ uri, style, muted = false, contentFit = 'cover', paused = 
   // фреймов в RAM. Баннер — короткий зацикленный ролик, ему хватает 4 секунд:
   // на слабых телефонах (3–4 ГБ RAM) это разница между «плавно играет» и
   // «процесс убили по OOM».
-  const player = useVideoPlayer({ uri, useCaching: true }, (p) => {
+  const player = useVideoPlayer({ uri, useCaching }, (p) => {
     p.loop = true;
     p.muted = muted;
     p.bufferOptions = {
@@ -160,16 +209,21 @@ export function PromoMedia({
   uri, style, muted, contentFit = 'cover', mediaType, paused = false, posterUrl,
 }) {
   const kind = useMediaKind(uri, mediaType);
+  // Для видео заранее решаем, можно ли его кешировать (см. isMoovFirst):
+  // источник плеера задаётся при создании и потом не меняется.
+  const moovFirst = useMoovFirst(kind === 'video' ? uri : null);
 
   // Hold a branded skeleton until the type is known — handing an MP4 to <Image> is
   // exactly what renders the corrupted, striped frame this guards against.
   if (!kind) return <MediaSkeleton style={style} radius={0} />;
 
   if (kind === 'video') {
+    if (moovFirst === undefined) return <MediaSkeleton style={style} radius={0} />;
     return (
       <PromoVideo
-        key={uri}
+        key={`${uri}:${moovFirst}`}
         uri={uri}
+        useCaching={moovFirst}
         style={style}
         muted={muted}
         contentFit={contentFit}
