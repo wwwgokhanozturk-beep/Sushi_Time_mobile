@@ -65,6 +65,10 @@ export default function App() {
         if (data?.type === 'order_update' && data?.orderId && navigationRef.current) {
           navigationRef.current.navigate('OrderTracking', { orderId: data.orderId });
         }
+        // The restaurant wrote in chat (e.g. about an order) — open the chat tab
+        if (data?.type === 'chat' && navigationRef.current) {
+          navigationRef.current.navigate('Tabs', { screen: 'Chat' });
+        }
       },
     });
     return cleanup;
