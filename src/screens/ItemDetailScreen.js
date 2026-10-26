@@ -14,6 +14,7 @@ import { useMenuStore } from '../store/menuStore';
 import { useCartStore } from '../store/cartStore';
 import { PrimaryButton } from '../components/SharedWidgets';
 import CachedImage from '../components/CachedImage';
+import { NutritionPanel } from '../components/Nutrition';
 import { formatPrice } from '../utils/formatPrice';
 import { imageFrameTransform } from '../utils/imageFrame';
 import { pickLocalized } from '../utils/localized';
@@ -96,13 +97,13 @@ export default function ItemDetailScreen({ route, navigation }) {
             <Text style={[Typography.price, { fontSize: 22 }]}>{price}</Text>
           </View>
 
+          {/* Калории и белки — на самом видном месте, сразу под названием */}
+          <NutritionPanel item={item} style={{ marginTop: Spacing.md }} />
+
           {/* Meta chips */}
           <View style={styles.metaRow}>
             <View style={styles.metaChip}>
               <Text style={styles.metaText}>⏱ {item.preparationTime} {t('min_label')}</Text>
-            </View>
-            <View style={styles.metaChip}>
-              <Text style={styles.metaText}>🔥 {item.calories} {t('cal_label')}</Text>
             </View>
             <View style={[styles.metaChip, { backgroundColor: Colors.primary + '20', borderColor: 'transparent' }]}>
               <Text style={[styles.metaText, { color: Colors.primary }]}>
