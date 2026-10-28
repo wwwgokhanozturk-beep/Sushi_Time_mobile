@@ -115,7 +115,8 @@ export const useMenuStore = create((set, get) => ({
         categoryNames: next.categoryNames,
         categoryOrder: next.categoryOrder,
       });
-      prefetchImages(items.slice(0, PREFETCH_COUNT).map((i) => i.imageUrl));
+      // Те же лёгкие копии, что рисует список (SushiCard).
+      prefetchImages(items.slice(0, PREFETCH_COUNT).map((i) => i.thumbUrl || i.imageUrl));
     } catch (e) {
       console.warn('[SushiTime] loadMenu error:', e.message, e.response?.status);
 

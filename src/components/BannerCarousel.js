@@ -204,7 +204,7 @@ function BannerCarousel() {
                         там поля остаются цвета карточки — здесь то же самое. */}
                     {item.mediaType === 'image' && (
                       <CachedImage
-                        uri={item.imageUrl}
+                        uri={item.thumbUrl || item.imageUrl}
                         style={[StyleSheet.absoluteFill, styles.backdrop]}
                         contentFit="cover"
                         blurRadius={24}
@@ -219,7 +219,9 @@ function BannerCarousel() {
                         1.5, а в приложении показывало эти поля по углам. */}
                     <PromoMedia
                       uri={item.imageUrl}
-                      posterUrl={item.posterUrl}
+                      // Лёгкая картинка от сервера: у видео — первый кадр,
+                      // у фото — копия поменьше; видна, пока грузится медиа.
+                      posterUrl={item.thumbUrl || item.posterUrl}
                       mediaType={item.mediaType}
                       paused={false}
                       style={[

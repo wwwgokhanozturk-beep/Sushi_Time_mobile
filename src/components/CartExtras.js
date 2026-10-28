@@ -50,7 +50,7 @@ function ExtraCard({ item, name, quantity, onAdd }) {
     <View style={styles.card}>
       <View style={styles.imgWrap}>
         {item.imageUrl ? (
-          <CachedImage uri={item.imageUrl} style={styles.img} contentFit="cover" cachePolicy="disk" />
+          <CachedImage uri={item.thumbUrl || item.imageUrl} style={styles.img} contentFit="cover" cachePolicy="disk" />
         ) : (
           <View style={[styles.img, styles.imgFallback]}>
             <Text style={{ fontSize: 30 }}>🍣</Text>

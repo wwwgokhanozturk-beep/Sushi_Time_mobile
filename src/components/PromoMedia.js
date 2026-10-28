@@ -112,7 +112,8 @@ function useMoovFirst(uri) {
 }
 
 // Plays a promo video. `muted` story = full sound; bubble/banner preview = silent loop.
-function PromoVideo({ uri, style, muted = false, contentFit = 'cover', paused = false, useCaching = true }) {
+// `poster` — первый кадр ролика от сервера: виден, пока плеер набирает данные.
+function PromoVideo({ uri, style, muted = false, contentFit = 'cover', paused = false, useCaching = true, poster }) {
   // `useCaching` кладёт файл в кеш expo-video: первый показ грузится из сети,
   // все следующие — с диска, поэтому белого экрана при повторе больше нет.
   //
@@ -195,7 +196,11 @@ function PromoVideo({ uri, style, muted = false, contentFit = 'cover', paused = 
         fullscreenOptions={NO_FULLSCREEN}
         pointerEvents="none"
       />
-      {!ready && <MediaSkeleton style={StyleSheet.absoluteFill} radius={0} />}
+      {!ready && (poster ? (
+        <CachedImage uri={poster} style={StyleSheet.absoluteFill} contentFit={contentFit} transition={0} />
+      ) : (
+        <MediaSkeleton style={StyleSheet.absoluteFill} radius={0} />
+      ))}
     </View>
   );
 }
@@ -218,7 +223,13 @@ export function PromoMedia({
   if (!kind) return <MediaSkeleton style={style} radius={0} />;
 
   if (kind === 'video') {
-    if (moovFirst === undefined) return <MediaSkeleton style={style} radius={0} />;
+    if (moovFirst === undefined) {
+      return posterUrl ? (
+        <CachedImage uri={posterUrl} style={style} contentFit={contentFit} transition={0} />
+      ) : (
+        <MediaSkeleton style={style} radius={0} />
+      );
+    }
     return (
       <PromoVideo
         key={`${uri}:${moovFirst}`}
@@ -228,6 +239,7 @@ export function PromoMedia({
         muted={muted}
         contentFit={contentFit}
         paused={paused}
+        poster={posterUrl}
       />
     );
   }

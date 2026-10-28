@@ -147,7 +147,9 @@ function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
           <View style={styles.listImgClip}>
             {item.imageUrl ? (
               <CachedImage
-                uri={item.imageUrl}
+                // Строке 116 px хватает лёгкой копии (~600 px) — её делает
+                // сервер; пока копии нет, берём оригинал.
+                uri={item.thumbUrl || item.imageUrl}
                 style={[styles.listImage, { transform: imageFrameTransform(item, 116, 116) }]}
                 contentFit="cover"
                 // Список из 50+ карточек: memory-кеш expo-image
@@ -186,7 +188,7 @@ function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
     <TouchableOpacity activeOpacity={0.75} onPress={onTap} style={styles.card}>
       <View style={styles.imgContainer}>
         {item.imageUrl ? (
-          <CachedImage uri={item.imageUrl} style={styles.image} contentFit="contain" />
+          <CachedImage uri={item.thumbUrl || item.imageUrl} style={styles.image} contentFit="contain" />
         ) : (
           <View style={styles.placeholder}>
             <Text style={{ fontSize: 48 }}>🍣</Text>

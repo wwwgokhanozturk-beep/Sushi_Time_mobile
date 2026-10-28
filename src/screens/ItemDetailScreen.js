@@ -69,6 +69,10 @@ export default function ItemDetailScreen({ route, navigation }) {
                 style={[styles.image, { transform: imageFrameTransform(item, width - Spacing.md * 2, width - Spacing.md * 2) }]}
                 contentFit="cover"
                 priority="high"
+                // Пока грузится большое фото — лёгкая копия из списка меню:
+                // она уже лежит в кеше на диске, поэтому видна сразу.
+                placeholder={item.thumbUrl ? { uri: item.thumbUrl } : undefined}
+                placeholderContentFit="cover"
               />
             ) : (
               <View style={styles.placeholder}>

@@ -34,7 +34,8 @@ export function categoryLabel(cat, names, lang, t) {
 
 /**
  * Обложка категории: то, что выбрал админ, иначе фото первого товара раздела.
- * Возвращает { imageUrl, scale, offsetX, offsetY } либо null.
+ * Возвращает { imageUrl, thumbUrl, scale, offsetX, offsetY } либо null;
+ * thumbUrl — лёгкая копия от сервера для кружка (может быть пустой).
  *
  * @param {string} cat
  * @param {object} images справочник categoryImages
@@ -47,6 +48,7 @@ export function categoryImage(cat, images, fallbackUrl) {
   if (picked?.imageUrl) {
     return {
       imageUrl: picked.imageUrl,
+      thumbUrl: picked.thumbUrl || '',
       scale: Number(picked.scale) || 1,
       offsetX: Number(picked.offsetX) || 0,
       offsetY: Number(picked.offsetY) || 0,

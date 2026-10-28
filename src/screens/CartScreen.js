@@ -55,7 +55,7 @@ export default function CartScreen({ navigation }) {
         <View style={styles.tile}>
           <View style={styles.tileImage}>
             {item.menuItem.imageUrl ? (
-              <CachedImage uri={item.menuItem.imageUrl} style={styles.img} contentFit="cover" cachePolicy="disk" />
+              <CachedImage uri={item.menuItem.thumbUrl || item.menuItem.imageUrl} style={styles.img} contentFit="cover" cachePolicy="disk" />
             ) : (
               <Text style={{ fontSize: 32 }}>🍣</Text>
             )}

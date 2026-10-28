@@ -32,7 +32,7 @@ export function buildCategoryEntries(cats, items, categoryImages = {}, labelOf =
   const firstImage = new Map();
   for (const it of items) {
     const key = (it.category || 'other').toLowerCase();
-    if (!firstImage.has(key) && it.imageUrl) firstImage.set(key, it.imageUrl);
+    if (!firstImage.has(key) && it.imageUrl) firstImage.set(key, it.thumbUrl || it.imageUrl);
   }
   return cats.map((cat) => {
     const key = (cat || '').toLowerCase();
@@ -54,7 +54,7 @@ function RailItem({ entry, active, onPress }) {
       <View style={[styles.ring, active && styles.ringActive]}>
         {entry.image?.imageUrl ? (
           <CachedImage
-            uri={entry.image.imageUrl}
+            uri={entry.image.thumbUrl || entry.image.imageUrl}
             style={[styles.img, frame ? { transform: frame } : null]}
             contentFit="cover"
             transition={120}
