@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import AppBackground from './components/AppBackground';
 import ClosedNotice from './components/ClosedNotice';
 import UpdateNotice from './components/UpdateNotice';
+import DishInfoSheet from './components/DishInfoSheet';
 import './core/i18n';
 import { useNotificationStore } from './store/notificationStore';
 import { useProfileStore } from './store/profileStore';
@@ -104,6 +105,7 @@ export default function App() {
             <StatusBar style="light" />
             <RootNavigator />
             <ClosedNotice navigationRef={navigationRef} />
+            <DishInfoSheet navigationRef={navigationRef} />
             <UpdateNotice />
           </NavigationContainer>
         </AppBackground>

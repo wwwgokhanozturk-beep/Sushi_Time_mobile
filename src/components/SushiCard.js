@@ -7,6 +7,7 @@ import { imageFrameTransform } from '../utils/imageFrame';
 import { pickLocalized } from '../utils/localized';
 import { useTranslation } from 'react-i18next';
 import { NutritionChips, hasNutrition } from './Nutrition';
+import { openDishInfo } from './DishInfoSheet';
 
 // Высота строки меню зафиксирована, чтобы список мог считать позиции заранее
 // (getItemLayout): без этого прыжок к дальней категории промахивается мимо цели.
@@ -101,7 +102,7 @@ function StarRating({ rating = 0, size = 11 }) {
 // ветка с 28 полупрозрачными View для имитации градиента, и любой новый
 // <SushiCard item={x} /> без явного mode молча получал бы именно её.
 function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const price = formatPrice(item.price);
 
   // Название тоже переводится — как на сайте. Раньше бралось сырое `item.name`,
@@ -176,6 +177,18 @@ function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
             activeOpacity={0.8}
           >
             <Text style={[styles.addBtnText, !item.isAvailable && styles.addBtnTextOff]}>+</Text>
+          </TouchableOpacity>
+          {/* «i» поверх фото (сверху-справа): окно с весом, составом и БЖУ */}
+          <TouchableOpacity
+            style={styles.listInfoBtn}
+            onPress={() => openDishInfo(item)}
+            activeOpacity={0.8}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={t('about_dish')}
+          >
+            <View style={styles.infoDot} />
+            <View style={styles.infoStem} />
           </TouchableOpacity>
         </View>
 
@@ -475,6 +488,23 @@ const styles = StyleSheet.create({
     borderColor: Colors.surface,
     ...Shadows.glow,
   },
+  // Кнопка «i» поверх фото. Буква нарисована точкой и штрихом, а не символом
+  // ⓘ: шрифтовой значок на Android и iOS выглядит по-разному.
+  listInfoBtn: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1.5,
+    ...Shadows.sm,
+  },
+  infoDot: { width: 3.2, height: 3.2, borderRadius: 1.6, backgroundColor: Colors.textPrimary },
+  infoStem: { width: 2.6, height: 8.5, borderRadius: 1.3, backgroundColor: Colors.textPrimary },
 });
 
 // Ряды меню перерисовываются на каждый скролл-тик родителя. Сравниваем только

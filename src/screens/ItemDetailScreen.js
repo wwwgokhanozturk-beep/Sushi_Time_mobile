@@ -14,7 +14,7 @@ import { useMenuStore } from '../store/menuStore';
 import { useCartStore } from '../store/cartStore';
 import { PrimaryButton } from '../components/SharedWidgets';
 import CachedImage from '../components/CachedImage';
-import { NutritionPanel } from '../components/Nutrition';
+import { NutritionFacts, hasNutritionFacts, servingLabel } from '../components/Nutrition';
 import { formatPrice } from '../utils/formatPrice';
 import { imageFrameTransform } from '../utils/imageFrame';
 import { pickLocalized } from '../utils/localized';
@@ -51,6 +51,7 @@ export default function ItemDetailScreen({ route, navigation }) {
   // to the base field when a translation is missing.
   const description = pickLocalized(item, 'description', i18n.language);
   const ingredients = pickLocalized(item, 'ingredients', i18n.language);
+  const serving = servingLabel(item, t, i18n.language);
 
   const handleAdd = () => {
     for (let i = 0; i < quantity; i++) addToCart(item);
@@ -100,9 +101,16 @@ export default function ItemDetailScreen({ route, navigation }) {
             <Text style={[Typography.heading2, { flex: 1 }]}>{pickLocalized(item, 'name', i18n.language)}</Text>
             <Text style={[Typography.price, { fontSize: 22 }]}>{price}</Text>
           </View>
+          {serving ? <Text style={styles.serving}>{serving}</Text> : null}
 
-          {/* Калории и белки — на самом видном месте, сразу под названием */}
-          <NutritionPanel item={item} style={{ marginTop: Spacing.md }} />
+          {/* Пищевая ценность — на самом видном месте, сразу под названием;
+              тот же блок, что в окне «i» из меню */}
+          {hasNutritionFacts(item) && (
+            <>
+              <Text style={[Typography.heading3, { marginTop: Spacing.md }]}>{t('nutrition_title')}</Text>
+              <NutritionFacts item={item} style={{ marginTop: Spacing.sm }} />
+            </>
+          )}
 
           {/* Meta chips */}
           <View style={styles.metaRow}>
@@ -231,6 +239,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  serving: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary, marginTop: 4 },
   metaRow: { flexDirection: 'row', marginTop: Spacing.md, gap: Spacing.sm },
   metaChip: {
     paddingHorizontal: Spacing.md,
