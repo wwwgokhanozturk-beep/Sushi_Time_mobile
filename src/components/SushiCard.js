@@ -6,15 +6,13 @@ import { formatPrice } from '../utils/formatPrice';
 import { imageFrameTransform } from '../utils/imageFrame';
 import { pickLocalized } from '../utils/localized';
 import { useTranslation } from 'react-i18next';
-import { NutritionChips, hasNutrition } from './Nutrition';
 import { openDishInfo } from './DishInfoSheet';
 
 // Высота строки меню зафиксирована, чтобы список мог считать позиции заранее
 // (getItemLayout): без этого прыжок к дальней категории промахивается мимо цели.
 // 116 — размер фото, 14×2 — вертикальные отступы карточки.
 // Текст слева тоже укладывается в 116: название до 2 строк (44) + цена (20) +
-// плашки калорий/белков (18) + описание в 1 строку (18) + три отступа по 5.
-// Если плашек нет, описанию остаются 2 строки.
+// описание до 2 строк (36) + два отступа по 5. Калории и БЖУ — в окне «i».
 export const LIST_ROW_HEIGHT = 144;
 
 // ─── Gradient vignette: blends image edges into card bg ──────────────────────
@@ -112,7 +110,6 @@ function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
   // Из чего блюдо, ресторан пишет в описании; если описания нет — показываем
   // список ингредиентов.
   const blurb = description || (pickLocalized(item, 'ingredients', i18n.language) || []).join(', ');
-  const nutrition = hasNutrition(item);
 
   const pseudoRating = item.rating || (3.5 + ((item.price * 7 + item.calories) % 15) / 10);
 
@@ -135,10 +132,8 @@ function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
             )}
           </View>
 
-          <NutritionChips item={item} />
-
           {blurb ? (
-            <Text style={styles.listDesc} numberOfLines={nutrition ? 1 : 2}>{blurb}</Text>
+            <Text style={styles.listDesc} numberOfLines={2}>{blurb}</Text>
           ) : null}
         </View>
 
