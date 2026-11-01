@@ -492,14 +492,14 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.94)',
+    backgroundColor: Colors.info,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 1.5,
     ...Shadows.sm,
   },
-  infoDot: { width: 3.2, height: 3.2, borderRadius: 1.6, backgroundColor: Colors.textPrimary },
-  infoStem: { width: 2.6, height: 8.5, borderRadius: 1.3, backgroundColor: Colors.textPrimary },
+  infoDot: { width: 3.2, height: 3.2, borderRadius: 1.6, backgroundColor: '#FFFFFF' },
+  infoStem: { width: 2.6, height: 8.5, borderRadius: 1.3, backgroundColor: '#FFFFFF' },
 });
 
 // Ряды меню перерисовываются на каждый скролл-тик родителя. Сравниваем только
