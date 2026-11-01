@@ -59,14 +59,12 @@ export function NutritionChips({ item }) {
   );
 }
 
-// Цвета белков, жиров и углеводов: точки у подписей и полоска под цифрами.
+// Цвет каждого показателя: точка у подписи и полоска под его столбцом.
 const MACROS = ['protein', 'fat', 'carbs'];
-const MACRO_COLORS = { protein: '#10B981', fat: '#F59E0B', carbs: '#3B82F6' };
-// Килокалорий в грамме: белки и углеводы — 4, жиры — 9.
-const KCAL_PER_GRAM = { protein: 4, fat: 9, carbs: 4 };
+const COLORS = { protein: '#10B981', fat: '#F59E0B', carbs: '#3B82F6', calories: '#EF4444' };
 
-// Пищевая ценность на порцию, как её вводит ресторан: белки, жиры, углеводы,
-// калории и полоска — какая доля калорий приходится на белки, жиры и углеводы.
+// Пищевая ценность на порцию, как её вводит ресторан: белки, жиры, углеводы
+// и калории, у каждого показателя свой цвет.
 // children — кнопки внизу карточки (в окне блюда это «Подробнее о блюде»).
 export function NutritionFacts({ item, style, children }) {
   const { t, i18n } = useTranslation();
@@ -76,7 +74,6 @@ export function NutritionFacts({ item, style, children }) {
   const facts = [
     ...MACROS.map((key) => item[key] > 0 && {
       key,
-      color: MACRO_COLORS[key],
       value: amount(item[key], lang),
       unit: t('gram_label'),
       label: t(key),
@@ -89,17 +86,11 @@ export function NutritionFacts({ item, style, children }) {
     },
   ].filter(Boolean);
 
-  // Только когда известны все три — иначе единственный заполненный
-  // показатель выглядел бы как «100% калорий».
-  const shares = MACROS.every((key) => item[key] > 0)
-    ? MACROS.map((key) => ({ key, kcal: item[key] * KCAL_PER_GRAM[key] }))
-    : null;
-
   return (
     <View style={[styles.factsCard, style]}>
       <Text style={styles.basisCaption}>{t('per_serving')}</Text>
 
-      <View style={[styles.factsRow, facts.length < 3 && styles.factsRowLoose]}>
+      <View style={styles.factsRow}>
         {facts.map((fact) => (
           <View key={fact.key} style={styles.fact}>
             <Text style={styles.factValue} numberOfLines={1}>
@@ -107,20 +98,13 @@ export function NutritionFacts({ item, style, children }) {
               <Text style={styles.factUnit}> {fact.unit}</Text>
             </Text>
             <View style={styles.factLabelRow}>
-              {fact.color ? <View style={[styles.factDot, { backgroundColor: fact.color }]} /> : null}
+              <View style={[styles.factDot, { backgroundColor: COLORS[fact.key] }]} />
               <Text style={styles.factLabel} numberOfLines={1}>{fact.label}</Text>
             </View>
+            <View style={[styles.factStripe, { backgroundColor: COLORS[fact.key] }]} />
           </View>
         ))}
       </View>
-
-      {shares && (
-        <View style={styles.sharesBar}>
-          {shares.map((share) => (
-            <View key={share.key} style={{ flex: share.kcal, backgroundColor: MACRO_COLORS[share.key] }} />
-          ))}
-        </View>
-      )}
 
       {children}
     </View>
@@ -153,30 +137,21 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     paddingHorizontal: 4,
   },
-  // Четыре столбца на всю ширину; на экране 360 «Karbonhidrat» и «1 250 kcal»
-  // ещё помещаются, а если нет — подпись обрежется многоточием.
+  // До четырёх столбцов на всю ширину: каждый шириной в свой текст плюс равная
+  // доля остатка, так что полоски под ними заполняют ширину. На экране 360
+  // «Karbonhidrat» и «1 250 kcal» ещё помещаются, а если нет — подпись
+  // обрежется многоточием.
   factsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     gap: 8,
     marginTop: 16,
     paddingHorizontal: 4,
   },
-  // Один-два показателя не разъезжаются по краям, а стоят рядом.
-  factsRowLoose: { justifyContent: 'flex-start', gap: 32 },
-  fact: { flexShrink: 1, minWidth: 0 },
+  fact: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
   factValue: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.4 },
   factUnit: { fontSize: 13, fontWeight: '700', letterSpacing: 0 },
   factLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
   factDot: { width: 7, height: 7, borderRadius: 3.5 },
   factLabel: { flexShrink: 1, fontSize: 12.5, fontWeight: '500', color: Colors.textSecondary },
-  sharesBar: {
-    flexDirection: 'row',
-    gap: 2,
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginTop: 14,
-    marginHorizontal: 4,
-  },
+  factStripe: { height: 6, borderRadius: 3, marginTop: 14 },
 });
