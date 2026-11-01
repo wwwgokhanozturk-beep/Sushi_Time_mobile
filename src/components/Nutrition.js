@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Colors, Radius, Shadows } from '../core/theme';
+import { Colors, Radius } from '../core/theme';
 
 // Калории и белки на порцию — ресторан вводит их в админке. 0 значит
 // «не заполнено», такое значение не показываем вовсе.
@@ -65,73 +65,39 @@ const MACRO_COLORS = { protein: '#10B981', fat: '#F59E0B', carbs: '#3B82F6' };
 // Килокалорий в грамме: белки и углеводы — 4, жиры — 9.
 const KCAL_PER_GRAM = { protein: 4, fat: 9, carbs: 4 };
 
-// Выбранная вкладка общая для всех блюд до перезапуска приложения: кто
-// сравнивает блюда «на 100 г», не должен переключать её у каждого заново.
-let lastBasis = 'serving';
-
-// Пищевая ценность с вкладками «на 100 г / на порцию»: белки, жиры, углеводы,
+// Пищевая ценность на порцию, как её вводит ресторан: белки, жиры, углеводы,
 // калории и полоска — какая доля калорий приходится на белки, жиры и углеводы.
-// Ресторан вводит значения на порцию, на 100 г они пересчитываются по весу
-// порции; если вес не указан, вкладок нет — только порция.
 // children — кнопки внизу карточки (в окне блюда это «Подробнее о блюде»).
 export function NutritionFacts({ item, style, children }) {
   const { t, i18n } = useTranslation();
-  const [chosen, setChosen] = useState(lastBasis);
   if (!hasNutritionFacts(item)) return null;
 
   const lang = i18n.language;
-  const canPer100 = item.weight > 0;
-  const basis = canPer100 ? chosen : 'serving';
-  const factor = basis === '100g' ? 100 / item.weight : 1;
-
-  const choose = (next) => {
-    lastBasis = next;
-    setChosen(next);
-  };
-
   const facts = [
     ...MACROS.map((key) => item[key] > 0 && {
       key,
       color: MACRO_COLORS[key],
-      value: amount(item[key] * factor, lang),
+      value: amount(item[key], lang),
       unit: t('gram_label'),
       label: t(key),
     }),
     item.calories > 0 && {
       key: 'calories',
-      value: Math.round(item.calories * factor).toLocaleString(lang),
+      value: Math.round(item.calories).toLocaleString(lang),
       unit: t('cal_label'),
       label: t('calories'),
     },
   ].filter(Boolean);
 
-  // Доли не зависят от вкладки. Только когда известны все три — иначе
-  // единственный заполненный показатель выглядел бы как «100% калорий».
+  // Только когда известны все три — иначе единственный заполненный
+  // показатель выглядел бы как «100% калорий».
   const shares = MACROS.every((key) => item[key] > 0)
     ? MACROS.map((key) => ({ key, kcal: item[key] * KCAL_PER_GRAM[key] }))
     : null;
 
   return (
     <View style={[styles.factsCard, style]}>
-      {canPer100 ? (
-        <View style={styles.segment}>
-          {[['100g', t('per_100g')], ['serving', t('per_serving')]].map(([key, label]) => (
-            <Pressable
-              key={key}
-              onPress={() => choose(key)}
-              style={[styles.segmentItem, basis === key && styles.segmentItemOn]}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: basis === key }}
-            >
-              <Text style={[styles.segmentText, basis === key && styles.segmentTextOn]} numberOfLines={1}>
-                {label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : (
-        <Text style={styles.basisCaption}>{t('per_serving')}</Text>
-      )}
+      <Text style={styles.basisCaption}>{t('per_serving')}</Text>
 
       <View style={[styles.factsRow, facts.length < 3 && styles.factsRowLoose]}>
         {facts.map((fact) => (
@@ -179,23 +145,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     padding: 14,
   },
-  segment: {
-    flexDirection: 'row',
-    backgroundColor: '#E7E7EC',
-    borderRadius: Radius.full,
-    padding: 3,
-  },
-  segmentItem: {
-    flex: 1,
-    height: 36,
-    borderRadius: Radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  segmentItemOn: { backgroundColor: '#FFFFFF', ...Shadows.sm },
-  segmentText: { fontSize: 13.5, fontWeight: '600', color: Colors.textSecondary },
-  segmentTextOn: { fontWeight: '700', color: Colors.textPrimary },
   // Без заглавных: на телефоне с английским языком системы «Porsiyon»
   // превратилось бы в «PORSIYON» — без точки над I.
   basisCaption: {
