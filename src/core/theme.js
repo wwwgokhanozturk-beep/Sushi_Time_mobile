@@ -18,7 +18,7 @@ export const Colors = {
   success:       '#10B981',
   warning:       '#F59E0B',
   error:         '#EF4444',
-  info:          '#3B82F6', // Blue «i» on dish photos
+  info:          '#3B82F6', // Blue «i» next to dish names
   shimmerBase:      '#F0F0F2',
   shimmerHighlight: '#FAFAFA',
 };

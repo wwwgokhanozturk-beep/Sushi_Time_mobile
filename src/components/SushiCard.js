@@ -12,7 +12,8 @@ import { openDishInfo } from './DishInfoSheet';
 // (getItemLayout): без этого прыжок к дальней категории промахивается мимо цели.
 // 116 — размер фото, 14×2 — вертикальные отступы карточки.
 // Текст слева тоже укладывается в 116: название до 2 строк (44) + цена (20) +
-// описание до 2 строк (36) + два отступа по 5. Калории и БЖУ — в окне «i».
+// описание до 2 строк (36) + два отступа по 5. Калории и БЖУ — в окне «i»;
+// его кнопка стоит в строке названия и высоты не добавляет.
 export const LIST_ROW_HEIGHT = 144;
 
 // ─── Gradient vignette: blends image edges into card bg ──────────────────────
@@ -122,7 +123,21 @@ function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
 
         {/* LEFT — текст */}
         <View style={styles.listContent}>
-          <Text style={styles.listName} numberOfLines={2}>{name}</Text>
+          {/* Название и сразу за ним «i»: окно с весом, составом и БЖУ */}
+          <View style={styles.listNameRow}>
+            <Text style={styles.listName} numberOfLines={2}>{name}</Text>
+            <TouchableOpacity
+              style={styles.listInfoBtn}
+              onPress={() => openDishInfo(item)}
+              activeOpacity={0.8}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={t('about_dish')}
+            >
+              <View style={styles.infoDot} />
+              <View style={styles.infoStem} />
+            </TouchableOpacity>
+          </View>
 
           {/* Цена + зачёркнутая */}
           <View style={styles.listPriceRow}>
@@ -172,18 +187,6 @@ function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
             activeOpacity={0.8}
           >
             <Text style={[styles.addBtnText, !item.isAvailable && styles.addBtnTextOff]}>+</Text>
-          </TouchableOpacity>
-          {/* «i» поверх фото (сверху-справа): окно с весом, составом и БЖУ */}
-          <TouchableOpacity
-            style={styles.listInfoBtn}
-            onPress={() => openDishInfo(item)}
-            activeOpacity={0.8}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel={t('about_dish')}
-          >
-            <View style={styles.infoDot} />
-            <View style={styles.infoStem} />
           </TouchableOpacity>
         </View>
 
@@ -413,7 +416,13 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingRight: Spacing.xs,
   },
+  listNameRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
   listName: {
+    flexShrink: 1,
     fontSize: 16,
     fontWeight: '800',
     color: Colors.textPrimary,
@@ -483,23 +492,20 @@ const styles = StyleSheet.create({
     borderColor: Colors.surface,
     ...Shadows.glow,
   },
-  // Кнопка «i» поверх фото. Буква нарисована точкой и штрихом, а не символом
-  // ⓘ: шрифтовой значок на Android и iOS выглядит по-разному.
+  // Кнопка «i» после названия: круг в высоту его строки (22). Буква нарисована
+  // точкой и штрихом, а не символом ⓘ: шрифтовой значок на Android и iOS
+  // выглядит по-разному.
   listInfoBtn: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: Colors.info,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 1.5,
-    ...Shadows.sm,
+    gap: 1.3,
   },
-  infoDot: { width: 3.2, height: 3.2, borderRadius: 1.6, backgroundColor: '#FFFFFF' },
-  infoStem: { width: 2.6, height: 8.5, borderRadius: 1.3, backgroundColor: '#FFFFFF' },
+  infoDot: { width: 2.8, height: 2.8, borderRadius: 1.4, backgroundColor: '#FFFFFF' },
+  infoStem: { width: 2.3, height: 7.6, borderRadius: 1.15, backgroundColor: '#FFFFFF' },
 });
 
 // Ряды меню перерисовываются на каждый скролл-тик родителя. Сравниваем только
