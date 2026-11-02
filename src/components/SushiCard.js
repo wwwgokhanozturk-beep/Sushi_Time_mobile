@@ -123,7 +123,8 @@ function SushiCard({ item, onTap, onAdd, mode = 'list' }) {
 
         {/* LEFT — текст */}
         <View style={styles.listContent}>
-          {/* Название и сразу за ним «i»: окно с весом, составом и БЖУ */}
+          {/* Название и в конце его строки «i» (окно с весом, составом и БЖУ):
+              в каждой строке на одном месте, у левого верхнего угла фото */}
           <View style={styles.listNameRow}>
             <Text style={styles.listName} numberOfLines={2}>{name}</Text>
             <TouchableOpacity
@@ -402,7 +403,8 @@ const styles = StyleSheet.create({
   listCard: {
     height: LIST_ROW_HEIGHT,
     flexDirection: 'row',
-    alignItems: 'center',
+    // По верху: строка названия с «i» начинается вровень с фото.
+    alignItems: 'flex-start',
     // Translucent so the app background design shows through the menu rows.
     backgroundColor: 'rgba(255,255,255,0.32)',
     paddingHorizontal: Spacing.md,
@@ -422,7 +424,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   listName: {
-    flexShrink: 1,
+    flex: 1, // вся ширина до «i» — так она прижата к фото
     fontSize: 16,
     fontWeight: '800',
     color: Colors.textPrimary,
@@ -492,9 +494,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.surface,
     ...Shadows.glow,
   },
-  // Кнопка «i» после названия: круг в высоту его строки (22). Буква нарисована
-  // точкой и штрихом, а не символом ⓘ: шрифтовой значок на Android и iOS
-  // выглядит по-разному.
+  // Кнопка «i» в конце строки названия: круг в высоту этой строки (22). Буква
+  // нарисована точкой и штрихом, а не символом ⓘ: шрифтовой значок на Android
+  // и iOS выглядит по-разному.
   listInfoBtn: {
     width: 22,
     height: 22,
