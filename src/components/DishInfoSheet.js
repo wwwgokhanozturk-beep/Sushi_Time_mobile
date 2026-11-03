@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { create } from 'zustand';
 import CachedImage from './CachedImage';
 import { NutritionFacts, hasNutritionFacts, servingLabel } from './Nutrition';
+import { Allergens } from './Allergens';
 import { useCartStore } from '../store/cartStore';
 import { Colors, Spacing, Radius, Shadows } from '../core/theme';
 import { formatPrice } from '../utils/formatPrice';
@@ -185,6 +186,9 @@ function SheetContent({ item, dragHandlers, onClose, onMore, onAdd }) {
       >
         {blurb ? <Text style={styles.blurb}>{blurb}</Text> : null}
 
+        {/* Аллергены — сразу за составом: значки, по нажатию — их названия */}
+        <Allergens item={item} style={blurb ? styles.allergens : null} />
+
         {facts ? (
           <>
             <Text style={styles.sectionTitle}>{t('about_dish')}</Text>
@@ -273,6 +277,7 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 0, flexShrink: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: Spacing.sm },
   blurb: { fontSize: 15, lineHeight: 21, color: Colors.textSecondary },
+  allergens: { marginTop: 14 },
   sectionTitle: {
     fontSize: 17,
     fontWeight: '800',

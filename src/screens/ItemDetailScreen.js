@@ -15,6 +15,7 @@ import { useCartStore } from '../store/cartStore';
 import { PrimaryButton } from '../components/SharedWidgets';
 import CachedImage from '../components/CachedImage';
 import { NutritionFacts, hasNutritionFacts, servingLabel } from '../components/Nutrition';
+import { Allergens, dishAllergens } from '../components/Allergens';
 import { formatPrice } from '../utils/formatPrice';
 import { imageFrameTransform } from '../utils/imageFrame';
 import { pickLocalized } from '../utils/localized';
@@ -109,6 +110,13 @@ export default function ItemDetailScreen({ route, navigation }) {
             <>
               <Text style={[Typography.heading3, { marginTop: Spacing.md }]}>{t('nutrition_title')}</Text>
               <NutritionFacts item={item} style={{ marginTop: Spacing.sm }} />
+            </>
+          )}
+
+          {dishAllergens(item).length > 0 && (
+            <>
+              <Text style={[Typography.heading3, { marginTop: Spacing.md }]}>{t('allergens_title')}</Text>
+              <Allergens item={item} showTitle={false} style={{ marginTop: Spacing.sm }} />
             </>
           )}
 
