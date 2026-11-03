@@ -28,8 +28,9 @@ export function servingLabel(item, t, lang) {
 const MACROS = ['protein', 'fat', 'carbs'];
 const COLORS = { protein: '#10B981', fat: '#F59E0B', carbs: '#3B82F6', calories: '#EF4444' };
 
-// Пищевая ценность на порцию, как её вводит ресторан: белки, жиры, углеводы
-// и калории, у каждого показателя свой цвет.
+// Пищевая ценность на порцию из админки: белки, жиры, углеводы и калории, у
+// каждого показателя свой цвет. Значения в меню — расчёт по составу и фото
+// каждого блюда (2026-11-03), поэтому подпись называет их примерными.
 // children — кнопки внизу карточки (в окне блюда это «Подробнее о блюде»).
 export function NutritionFacts({ item, style, children }) {
   const { t, i18n } = useTranslation();
@@ -53,7 +54,7 @@ export function NutritionFacts({ item, style, children }) {
 
   return (
     <View style={[styles.factsCard, style]}>
-      <Text style={styles.basisCaption}>{t('per_serving')}</Text>
+      <Text style={styles.basisCaption}>{t('approx_per_serving')}</Text>
 
       <View style={styles.factsRow}>
         {facts.map((fact) => (
