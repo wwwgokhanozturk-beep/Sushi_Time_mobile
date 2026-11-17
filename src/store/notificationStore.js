@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { Platform } from 'react-native';
 import { registerForPushNotifications } from '../core/notifications';
 import httpClient from '../core/httpClient';
 import i18n from '../core/i18n';
@@ -11,8 +12,9 @@ const appLanguage = () => {
   return PUSH_LANGUAGES.includes(code) ? code : undefined;
 };
 
+// platform — iPhone или Android: админка делит по нему телефоны с уведомлениями.
 const postToken = (pushToken) =>
-  httpClient.post('/notifications/register-token', { pushToken, language: appLanguage() });
+  httpClient.post('/notifications/register-token', { pushToken, language: appLanguage(), platform: Platform.OS });
 
 export const useNotificationStore = create((set, get) => ({
   pushToken: null,

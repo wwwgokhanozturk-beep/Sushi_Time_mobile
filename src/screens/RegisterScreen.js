@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Colors, Spacing } from "../core/theme";
 import { PrimaryButton } from "../components/SharedWidgets";
@@ -28,6 +28,8 @@ export default function RegisterScreen({ navigation }) {
         phone: phone.trim(),
         email: email.trim().toLowerCase(),
         password,
+        // Админка показывает, где создан аккаунт: App Store или Play Market.
+        platform: Platform.OS,
       });
       const { data } = await httpClient.post("/users/login", {
         email: email.trim().toLowerCase(),

@@ -16,6 +16,7 @@ import { useProfileStore } from './store/profileStore';
 import { useSettingsStore } from './store/settingsStore';
 import { setupNotificationListeners } from './core/notifications';
 import { useAutoApplyUpdates } from './core/otaUpdates';
+import { pingDeviceActivity } from './core/deviceActivity';
 import { setVideoCacheSizeAsync } from 'expo-video';
 import { clearImageMemoryCache } from './components/CachedImage';
 
@@ -44,7 +45,9 @@ export default function App() {
     setVideoCacheSizeAsync(200 * 1024 * 1024).catch(() => {});
 
     useNotificationStore.getState().registerToken();
-    useProfileStore.getState().loadProfile();
+    // Отметка «приложением пользуются» для статистики в админке — после того,
+    // как профиль прочитан: иначе вошедший человек посчитался бы гостем.
+    useProfileStore.getState().loadProfile().then(() => pingDeviceActivity());
     useSettingsStore.getState().loadBusinessHours();
     // Актуальная версия сборки: по ней UpdateNotice решает, предложить
     // обновление или потребовать его.
@@ -84,9 +87,17 @@ export default function App() {
       if (state === 'background' || state === 'inactive') {
         clearImageMemoryCache();
       }
+      // Вернулись в приложение — отметка для статистики (не чаще раза в 6 ч).
+      if (state === 'active') pingDeviceActivity();
     });
     return () => sub.remove();
   }, []);
+
+  // Вошли в аккаунт или вышли — статистика узнаёт сразу, а не через 6 часов.
+  // Первое чтение профиля при запуске пропускаем: за него отвечает эффект выше.
+  useEffect(() => useProfileStore.subscribe((state, prev) => {
+    if (prev.loaded && !!state.token !== !!prev.token) pingDeviceActivity();
+  }), []);
 
   // Show splash until the animation sequence completes
   if (!splashDone) {
